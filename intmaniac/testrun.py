@@ -148,6 +148,8 @@ class Testrun(object):
         if not isinstance(command, list):
             raise ValueError("Expected list for Testrun.run_command, not %s" %
                              str(type(command)))
+        self.log.debug("Executing command (%d words): %s" %
+                       (len(command), " ".join(command)))
         return run_command(command, cwd=self.test_dir)
 
     def run_test_command(self, command=None):
