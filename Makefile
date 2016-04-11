@@ -5,6 +5,7 @@ all:
 clean:
 	find . -type d -name __pycache__ | xargs rm -rf
 	find . -type f -name "*.pyc" -delete
+	rm -rf dist/ build/
 	rm -rf *.egg-info
 	rm -rf ignoreme build dist
 	rm -rf tmp

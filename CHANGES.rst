@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+0.9.4
+-----
+
+Date: 2016-04-11
+
+- Fixed running intmaniac from within a container, using a random integer now for docker-compose environment names
+
+
 0.9.1 - 0.9.3
 -------------
 
