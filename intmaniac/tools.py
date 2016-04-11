@@ -8,6 +8,8 @@ import functools
 import subprocess as sp
 import logging as log
 import sys
+from random import randint
+
 
 python_version = 10 * sys.version_info[0] + sys.version_info[1]
 debug = False
@@ -211,18 +213,18 @@ def run_command(command, *args, **kwargs):
 
 
 def setup_up_test_directory(config):
-    td = os.path.join(os.getcwd(), "intmaniac_%s" % os.getpid()) \
-        if not config.temp_output_dir \
-        else config.temp_output_dir
+    my_id = str(randint(0, 99999)).zfill(5)
     if debug:
-        # yup, just overwrite it when debugging. but this way the code above
-        # is actually tested.
-        td = "/tmp/intmaniac_%s" % os.getpid()
-    if not os.path.isdir(td) and not debug:
-        try:
-            os.makedirs(td)
-        except IOError:
-            fail("Error creating test base directory '%s'" % td)
+        td = "/tmp/intmaniac_00001"
+    else:
+        td = os.path.join(os.getcwd(), "intmaniac_%s" % my_id) \
+            if not config.temp_output_dir \
+            else config.temp_output_dir
+        if not os.path.isdir(td):
+            try:
+                os.makedirs(td)
+            except IOError:
+                fail("Error creating test base directory '%s'" % td)
     return td
 
 

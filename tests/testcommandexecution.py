@@ -31,7 +31,7 @@ class TestSimpleExecution(unittest.TestCase):
 
     def construct_base_cmdline(self, test_name):
         """returns (test_basedir, test_dir, base_cmd_line)"""
-        test_basedir = "/tmp/intmaniac_%s" % os.getpid()
+        test_basedir = "/tmp/intmaniac_00001"
         test_dir = os.path.join(test_basedir, test_name)
         base_cmdline = [
             'docker-compose', 'run', '-e',
