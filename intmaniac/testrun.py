@@ -173,7 +173,7 @@ class Testrun(object):
                 rv = e
             if not rv.returncode == 0:
                 if isinstance(rv, Exception):
-                    command = str(e)
+                    command = str(rv)
                 else:
                     command = " ".join(rv.args) if type(rv.args) == list \
                                                 else rv.args
