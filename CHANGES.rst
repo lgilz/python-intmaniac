@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+0.9.5
+-----
+
+Date: 2016-04-12
+
+- Fixed bug with unassigned variable
+
+
 0.9.4
 -----
 
