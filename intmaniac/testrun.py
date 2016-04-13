@@ -153,7 +153,12 @@ class Testrun(object):
         return run_command(command, cwd=self.test_dir)
 
     def run_test_command(self, command=None):
-        """:param command the command to execute as array"""
+        """
+        :param command: the command to execute as *array* or None. If command
+        is not None, it is appended to the base command line and executed.
+        If it is None, only the base command line is executed.
+        :return: None
+        """
         if command and not isinstance(command, list):
             raise ValueError("Expected list for Testrun.run_test_command, not %s" %
                              str(type(command)))
