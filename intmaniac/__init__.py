@@ -7,7 +7,8 @@ from intmaniac import tools
 from intmaniac import output
 
 import sys
-from os.path import join
+from os import getcwd
+from os.path import join, realpath
 from errno import *
 from argparse import ArgumentParser
 
@@ -125,18 +126,20 @@ def _prepare_environment(arguments):
     global config, logger, derived_basedir
     parser = ArgumentParser()
     parser.add_argument("-c", "--config-file",
-                        help="specify configuration file",
-                        default="./intmaniac.yaml")
+                        help="specify configuration file. "
+                             "Default: ./intmaniac.yml",
+                        default=realpath(join(getcwd(), "intmaniac.yaml")))
     parser.add_argument("-e", "--env",
                         help="dynamically add a value to the environment",
-                        default=[],
-                        action="append")
+                        action="append",
+                        default=[])
     parser.add_argument("-v", "--verbose",
                         help="increase verbosity level, use multiple times",
-                        default=0,
-                        action="count")
+                        action="count",
+                        default=0)
     parser.add_argument("-t", "--temp-output-dir",
-                        help="test dir location, default: $pwd/intmaniac")
+                        help="test dir location, default: $pwd/intmaniac/",
+                        default=realpath(join(getcwd(), './intmaniac/')))
     config = parser.parse_args(arguments)
     tools.init_logging(config)
     derived_basedir = tools.setup_up_test_directory(config)
