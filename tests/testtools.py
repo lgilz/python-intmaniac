@@ -1,6 +1,6 @@
 import unittest
 
-from intmaniac.tools import deep_merge
+from intmaniac.tools import deep_merge, recursive_replace
 
 
 class TestDeepMerge(unittest.TestCase):
@@ -29,3 +29,12 @@ class TestDeepMerge(unittest.TestCase):
         d2 = {            3: 6,       5: 8}
         rs = {1: 2, 2: 4, 3: 6, 4: 6, 5: 8}
         self.assertDictEqual(rs, deep_merge(d0, d1, d2))
+
+
+class TestRecursiveReplace(unittest.TestCase):
+
+    def test_recursive_replace(self):
+        t0 = {'hey': 'ho', 'ha': {'hi': 'huho'}, 'k': ['heh', 'hoh', 'han']}
+        t1 = {'hey': 'HI', 'ha': {'hi': 'huHI'}, 'k': ['heh', 'HIh', 'han']}
+        res = recursive_replace(t0, "ho", "HI")
+        self.assertDictEqual(t1, res)

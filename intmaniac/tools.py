@@ -4,6 +4,7 @@ from intmaniac.defaults import *
 
 import os
 import os.path
+import time
 import functools
 import subprocess as sp
 import logging as log
@@ -123,6 +124,44 @@ def deep_merge(*args):
 
 ##############################################################################
 #                                                                            #
+# recursive replace - goes through a dict recursively, and performs a string #
+# search and replace on all string values, including arrays.                 #
+#                                                                            #
+##############################################################################
+
+def recursive_replace(struct, search, replace):
+    """
+    Goes through the dict 'struct' and looks for the string $search in all
+    keys and values, including arrays. If found it will replace the string
+    :param struct: Either a dictionary, or a list
+    :param search: The string to look for
+    :param replace: The replacement
+    :return: The modified dict
+    """
+    if isinstance(struct, dict):
+        nd = {}
+        for k, v in struct.items():
+            if isinstance(v, str):
+                nd[k] = v.replace(search, replace)
+            elif isinstance(v, list) or isinstance(v, dict):
+                nd[k] = recursive_replace(v, search, replace)
+            else:
+                nd[k] = v
+        return nd
+    elif isinstance(struct, list):
+        nl = [
+            s.replace(search, replace)
+            if isinstance(s, str)
+            else s
+            for s in struct
+        ]
+        return nl
+    else:
+        raise ValueError("Only list and array data types are accepted here")
+
+
+##############################################################################
+#                                                                            #
 # a couple of string helpers (py2 vs py3)                                    #
 #                                                                            #
 ##############################################################################
@@ -144,101 +183,60 @@ def destr(sob):
 #                                                                            #
 ##############################################################################
 
-
-class DummyCompletedProcess:
-    """Poor man's Pyton 2.7 CompletedProcess replacement"""
-
-    # same signature as original class
-    def __init__(self, args, returncode, stdout=None, stderr=None):
-        # mimic constructor and behavior of CalledProcessError
-        self.args = args
-        self.returncode = returncode
-        self.output = stdout
+class RunCommandError(Exception):
+    def __init__(self,
+                 stdout=None, stderr=None,
+                 returncode=256,
+                 command=None,
+                 exception=None):
         self.stdout = stdout
         self.stderr = stderr
-
-    def __str__(self):
-        return "<DummyCompletedProcess: %s (%d)" % \
-               (" ".join(self.args), self.returncode)
-
-
-def _construct_return_object(returncode, args, stdout, stderr=None):
-    if returncode == 0:
-        cls = sp.CompletedProcess \
-            if python_version >= 35 \
-            else DummyCompletedProcess
-        rv = cls(args, returncode, stdout, stderr)
-    else:
-        rv = sp.CalledProcessError(returncode, args, stdout)
-        if not hasattr(rv, "stdout"):
-            rv.stdout = rv.output
-    return rv
+        self.returncode = returncode
+        self.command = command
+        self.rv = (command, returncode, stdout, stderr)
 
 
-def run_command(command, *args, **kwargs):
-    """takes an array as "command", which is executed. Mimics python 3
-    behavior, in the way that it returns a CalledProcessError on execution
-    failure. The object WILL HAVE the python 3 .stdout and .stderr
-    properties, always.
-    :param command an array to execute as one command
-    :returns a (Dummy)CompletedProcess or CalledProcessError instance, making
-     sure all of them have the .stdout, .stderr, .args and .returncode
-     properties.
+def run_command(command, *args, throw=False, expect_returncode=0, **kwargs):
     """
-    try:
-        p = sp.Popen(command, *args, stdout=sp.PIPE, stderr=sp.STDOUT, **kwargs)
-        stdout, _ = p.communicate()
-        # we want an exception on failed commands, yes?
-        rv = _construct_return_object(p.returncode, command, stdout)
-        if type(rv) == sp.CalledProcessError:
-            raise rv
-    except OSError as err:
-        # python 2 & 3, make this behave consistently
-        # has .returncode, command and output properties and constructor
-        # parameters, but we also need stdout
-        rv = sp.CalledProcessError(-7, command, "Exception: " + str(err))
-        rv.args = rv.cmd
-        rv.stdout = rv.output
-        rv.stderr = None
-        raise rv
+    Executes a command without using popen and returns a tuple with resulting
+    information. OSError exceptions are not catched or filtered.
+    :param command: An array to execute as one command
+    :param throw: If set to True a RunCommandError is raised on an execution
+    with error_code not equal to expect_returncode.
+    :param expect_returncode: The execution return code to expect when checking
+    for successful execution (in case of throw == True)
+    :returns A tuple containing (command, returncode, stdout, stderr).
+    """
+    p = sp.Popen(command, *args, stdout=sp.PIPE, stderr=sp.PIPE, **kwargs)
+    stdout, stderr = p.communicate()
+    stdout_str, stderr_str = destr(stdout), destr(stderr)
+    rv = (command, p.returncode, stdout_str, stderr_str)
+    if throw and rv[1] != expect_returncode:
+        raise RunCommandError(command=command, returncode=p.returncode,
+                              stdout=stdout_str, stderr=stderr_str)
     return rv
 
 
-##############################################################################
-#                                                                            #
-# debugging helpers - some things (like file creation & access) are unwanted #
-# during debug runs                                                          #
-#                                                                            #
-##############################################################################
-
-
-def setup_up_test_directory(config):
-    my_id = str(randint(0, 99999)).zfill(5)
-    if debug:
-        td = "/tmp/intmaniac_00001"
-    else:
-        td = os.path.join(os.getcwd(), "intmaniac_%s" % my_id) \
-            if not config.temp_output_dir \
-            else config.temp_output_dir
-        if not os.path.isdir(td):
-            try:
-                os.makedirs(td)
-            except IOError:
-                fail("Error creating test base directory '%s'" % td)
-    return td
-
-
-def dbg_tr_get_testdir(basedir, testname):
-    """If the docker cleanup fails, then we will not have the same names in
-    the next run (in which case docker-compose fails). That's why we do prefix
-    the test directories with the PID.
-    :param basedir the base directory in which the test dirs should be created
-    :param testname the name of the test, already sanitized
-    :returns a string containing the final path for the docker-compose.yml
-    template."""
-    prefix = '' if debug else 'p'+str(os.getpid())
-    testdir = os.path.join(basedir, prefix + testname)
-    return testdir
+def run_command_log(logger_error_func,
+                    logger_normal_func,
+                    rv, text=None, expected_returncode=0):
+    logger_func = None
+    state = text if text else "RUN COMMAND"
+    if rv[1] != expected_returncode and logger_error_func is not None:
+        logger_func = logger_error_func
+        state += " ERROR"
+    elif rv[1] == expected_returncode and logger_normal_func is not None:
+        logger_func = logger_normal_func
+    if logger_func:
+        command = rv[0] if isinstance(rv[0], str) else " ".join(rv[0])
+        _, retval, stdout, stderr = rv
+        err = "{}: '{}' returned {}"\
+            .format(state, command, retval)
+        if stdout != "":
+            err += "\nSTDOUT\n{}".format(stdout)
+        if stderr != "":
+            err += "\nSTDERR\n{}".format(stderr)
+        logger_func(err)
 
 
 def enable_debug():

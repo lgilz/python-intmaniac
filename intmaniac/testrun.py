@@ -1,36 +1,12 @@
 #!/usr/bin/env python
 
-from intmaniac.tools import deep_merge, run_command, dbg_tr_get_testdir
-from intmaniac.tools import get_logger, destr
+from intmaniac.tools import run_command, run_command_log as rcl
+from intmaniac.tools import get_logger, RunCommandError
 from intmaniac import output
 
-import copy
-import shutil
-import subprocess as sp
 import os
-from os.path import basename, join, isabs, realpath, dirname
-from re import sub as resub
-
-
-default_commandline_start = ["docker-compose", "run"]
-default_commandline_end = []
-
-default_config = {
-    'environment': {},
-    'meta': {
-        # no default values, must be set in config:
-        'test_container': None,
-        # default values, always used
-        'docker_compose_template': 'docker-compose.yml.tmpl',
-        'test_shell': '/bin/bash',
-        'run_timeout': 0,
-        'test_service': 'test-service',
-        # optional values
-        'docker_compose_params': [],
-        'test_report_files': None,
-    },
-    'test_commands': None,
-}
+from os.path import basename
+from re import sub as resub, search as research
 
 
 def _build_exec_array(base=None):
@@ -44,7 +20,8 @@ def _build_exec_array(base=None):
         return [base.split(" ")]
     elif isinstance(base, list) or isinstance(base, tuple):
         tmp = list(base)
-        tmp = [item.split(" ") if isinstance(item, str) else item for item in tmp ]
+        tmp = [item.split(" ")
+               if isinstance(item, str) else item for item in tmp]
         return tmp
     else:
         raise ValueError("Can't construct command array out of this: %s"%
@@ -61,182 +38,185 @@ class Testrun(object):
     CONTROLLED_FAILURE = "ALLOWED_FAILURE"
     FAILURE = "FAILED"
 
-    def __init__(self, name, test_definition):
-        self.name = name
-        test_definition = deep_merge(default_config, test_definition)
-        # quick shortcuts
-        self.test_env = test_definition['environment']
-        self.test_meta = test_definition['meta']
-        self.test_commands = test_definition.get('test_commands', [])
-        # take care of commands ...
-        self.test_commands = _build_exec_array(self.test_commands)
-        self.test_meta['test_before'] = \
-            _build_exec_array(self.test_meta.get('test_before', None))
-        self.test_meta['test_after'] = \
-            _build_exec_array(self.test_meta.get('test_after', None))
-
-        # okay.
-        # let's keep all file references relative to the configuration
-        # file. easy to remember.
-        configfilepath = realpath(dirname(self.test_meta.get('_configfile',
-                                                             './dummy')))
-        # self.TEMPLATE / .TEMPLATE_NAME
-        tmp = self.test_meta['docker_compose_template']
-        if not isabs(tmp):
-            tmp = realpath(join(configfilepath, tmp))
-        self.template = tmp
-        self.template_name = basename(self.template)
-        # self.BASEDIR
-        tmp = self.test_meta.get('test_basedir', configfilepath)
-        if not isabs(tmp):
-            tmp = realpath(join(configfilepath, tmp))
-        self.base_dir = tmp
-        # self.SANITIZED_NAME, .TEST_DIR
+    def __init__(self,
+                 name,
+                 compose_file,
+                 **kwargs):
+        self.name = name if name else basename(compose_file)
         self.sanitized_name = resub("[^a-zA-Z0-9_]", "-", self.name)
-        self.test_dir = dbg_tr_get_testdir(self.base_dir, self.sanitized_name)
-        # extend SELF.TEST_ENV with TEST_DIR
-        self.test_env['test_dir'] = self.test_dir
-        # create SELF.COMMANDLINE
-        self.commandline = copy.copy(default_commandline_start)
-        for param in self.test_meta['docker_compose_params']:
-            self.commandline.append(param)
-        for key, val in self.test_env.items():
-            self.commandline.append("-e")
-            self.commandline.append("%s=%s" % (key, val))
-        self.commandline.append("--rm")
-        self.commandline.extend(copy.copy(default_commandline_end))
-        self.commandline.append(self.test_meta['test_service'])
-        # create .STATE, .RESULT, .EXCEPTION, .REASON
-        self.state = self.NOTRUN
-        self.results = []
+        self.template = compose_file
+        # extract "top level" parameters
+        self.test_env = kwargs.pop('environment', {})
+        self.test_image = kwargs.pop('image')
+        self.test_linked_services = kwargs.pop('links')
+        self.test_commands = _build_exec_array(kwargs.pop('commands', []))
+        # save the rest
+        self.meta = kwargs
+        # state information
+        self.test_state = self.NOTRUN
+        self.test_results = []
         self.exception = None
         self.reason = None
+        # run information - this can only be set after the env is running
+        self.run_containers = None
+        self.run_command_base = None
         # log setup
-        # NO LOGGING BEFORE HERE
-        log_filename = join(self.base_dir, basename(self.test_dir)) + ".log"
-        self.log = get_logger("t-%s" % self.name, filename=log_filename)
+        self.log = get_logger("t-%s" % self.name)
         # some debug output
-        self.log.info("base commandline '%s'" % " ".join(self.commandline))
-        self.log.debug("test directory '%s'" % self.test_dir)
-        self.log.debug("template path '%s'" % self.template)
+        self.log.debug("using template '%s'" % self.template)
         for key, val in self.test_env.items():
             self.log.debug("env %s=%s" % (key, val))
 
     def __str__(self):
-        return "<runner.Test '%s' (%s)>" % (self.name, self.state)
+        return "<runner.Test '%s' (%s)>" % (self.name, self.test_state)
 
     def __repr__(self):
-        return "%s, state '%s'" % (self.name, self.state)
+        return "%s, state '%s'" % (self.name, self.test_state)
 
-    def init_environment(self):
-        self.log.debug("creating test directory %s" % self.test_dir)
-        shutil.rmtree(self.test_dir, ignore_errors=True)
-        os.makedirs(self.test_dir)
-        # TODO - catch & error handling if template cannot be found.
-        with open(self.template, "r") as ifile:
-            tpl = ifile.read()
-        for key, val in self.test_env.items():
-            tpl = tpl.replace("%%%%%s%%%%" % key.upper(), val)
-        # TODO (maybe) - catch and error handling if new tmpl cannot be written
-        with open(os.path.join(self.test_dir,
-                               "docker-compose.yml"), "w") as ofile:
-            ofile.write(tpl)
+    def _run_docker_compose(self, command, *args, **kwargs):
+        base_command = "docker-compose -f {} -p {}".format(
+            self.template, self.sanitized_name
+        ).split()
+        use_command = command \
+            if isinstance(command, list) \
+            else command.split(" ")
+        full_command = base_command + use_command
+        rv = self._run_command(full_command, *args, **kwargs)
+        return rv
 
-    def run_command(self, command):
-        """convenience helper so we don't forget to include cwd.
-        :param command the command to be executed."""
-        if not isinstance(command, list):
-            raise ValueError("Expected list for Testrun.run_command, not %s" %
-                             str(type(command)))
-        self.log.debug("Executing command (%d words): %s" %
-                       (len(command), " ".join(command)))
-        return run_command(command, cwd=self.test_dir)
+    def _container_for_service(self, service_name):
+        try:
+            return next(filter(lambda x: x[1] == service_name,
+                               self.run_containers))[0]
+        except StopIteration as ex:
+            # we cannot find the service name in the service list
+            ex = KeyError("Cannot find service '{}' in started services"
+                          .format(service_name))
+            raise ex
 
-    def run_test_command(self, command=None):
+    def _run_command(self, *args, **kwargs):
         """
-        :param command: the command to execute as *array* or None. If command
-        is not None, it is appended to the base command line and executed.
-        If it is None, only the base command line is executed.
-        :return: None
+        Convenience wrapper to actually always log command executions, even if
+        they throw an error. Not really cool, but this way it's out of my mind.
+        :param args: Arguments for run_command
+        :param kwargs: Keyword arguments for run_command
+        :return: The return tuple from run_command
         """
-        if command and not isinstance(command, list):
-            raise ValueError("Expected list for Testrun.run_test_command, not %s" %
-                             str(type(command)))
-        if not command:
-            command = self.commandline
-        else:
-            command = self.commandline + command
-        rv = self.run_command(command)
-        self.results.append(rv)
+        try:
+            rv = run_command(*args, **kwargs)
+            rcl(self.log.error, self.log.debug, rv)
+        except RunCommandError as e:
+            rcl(self.log.error, self.log.debug, e.rv)
+            raise e
+        return rv
 
-    def cleanup(self):
-        for cmd in ("docker-compose kill", "docker-compose rm -f"):
-            try:
-                self.log.debug("cleanup command: %s" % cmd)
-                rv = self.run_command(cmd.split(" "))
-            except sp.CalledProcessError as e:
-                rv = e
-            if not rv.returncode == 0:
-                if isinstance(rv, Exception):
-                    command = str(rv)
-                else:
-                    command = " ".join(rv.args) if type(rv.args) == list \
-                                                else rv.args
-                self.log.error("cleanup command '%s' failed. "
-                               "code %d, output: \n%s"
-                               % (command,
-                                  rv.returncode,
-                                  str(rv.stdout).strip()))
+    def _run_test_command(self, command):
+        # we need to do this here, cause
+        # construct envs
+        assert isinstance(command, list)
+        runthis = self.run_command_base + command
+        return self._run_command(runthis, throw=True, env=dict(os.environ,
+                                                              **self.test_env))
+
+    def _setup_test_env(self):
+        if self.meta.get('pull', None):
+            self._run_docker_compose("pull".split(), throw=True)
+            self._run_command("docker pull {}".format(self.test_image).split(),
+                              throw=True)
+        rv = self._run_docker_compose("up -d")
+        # first, set up "container_name -> service_name" tuples
+        outtext = rv[3]  # docker-compose outputs to stderr
+        lines = list(map(lambda x: x.strip(), outtext.split("\n")))
+        lines = list(filter(lambda x: x.strip() != "", lines))
+        self.run_containers = list(map(lambda x: (x,
+                                                  research('{}_(.+)_[0-9]+'
+                                                           .format(self.sanitized_name),
+                                                           x)
+                                                  .groups()[0]),
+                                       [line.split(" ")[1] for line in lines]))
+
+        self.log.warning("FOUND TEST CONTAINERS: {}"
+                         .format(", ".join(
+            ["{}->{}".format(k[0], k[1]) for k in self.run_containers]
+        )))
+        # second, set up docker run base command
+        runthis = "docker run --rm".split()
+        for k, v in self.test_env.items():
+            runthis += ["-e", "{}={}".format(k, v)]
+        # construct link params
+        for service in self.test_linked_services:
+            runthis += ["--link",
+                        "{}:{}".format(self._container_for_service(service),
+                                       service)
+                        ]
+        runthis.append(self.test_image)
+        self.run_command_base = runthis
+
+    def _cleanup(self):
+        self._run_docker_compose("stop")
+        self._run_docker_compose("rm -f")
+
+    def _get_container_logs(self):
+        pass
 
     def run(self):
         success = True
         try:
-            self.init_environment()
-            commands = []
-            commands.extend(self.test_meta['test_before'])
-            commands.extend(self.test_commands)
-            commands.extend(self.test_meta['test_after'])
-            for cmd in commands:
-                self.run_test_command(cmd)
-        except IOError as e:
-            self.exception = e
+            self._setup_test_env()
+            if self.meta.get('pre'):
+                for command in _build_exec_array(self.meta['pre']):
+                    rv = self._run_command(command,
+                                           throw=True,
+                                           env=dict(os.environ, **self.test_env))
+            for test_command in self.test_commands:
+                rv = self._run_test_command(test_command)
+                self.test_results.append(rv)
+            self._run_docker_compose("stop".split(" "))
+            self._run_docker_compose("rm -f".split(" "))
+        except KeyError as e:
+            # raised by _container_for_service() if service cannot be found
             success = False
-            self.reason = "Exception"
-            # for now we re-raise to get the stacktrace on the console.
-            raise e
-        except sp.CalledProcessError as e:
-            # we don't re-raise here, that's just the exit from the command
-            # loop above
-            self.log.info("command FAILED.")
-            self.log.debug("command output: %s" % e.stdout.strip())
-            self.results.append(e)
+            self.reason = str(e)
+        except RunCommandError as e:
             success = False
-            self.reason = "Failed command"
+            self.reason = "Failed test command"
+            self.test_results.append(e.rv)
+        except OSError as e:
+            success = False
+            self.reason = "Exception while exeucting command: {}".format(str(e))
+            self.log.error("Exception on command execution: {}".format(str(e)))
+            self.test_results.append(e)
         finally:
-            self.cleanup()
+            self._get_container_logs()
+            self._cleanup()
         # evaluate test results
-        if self.test_meta.get('allow_failure', False) and not success:
-            self.state = self.CONTROLLED_FAILURE
+        if self.meta.get('allow_failure', False) and not success:
+            self.test_state = self.CONTROLLED_FAILURE
         else:
-            self.state = self.SUCCEEDED if success else self.FAILURE
-        self.log.warning("test state %s" % self.state)
+            self.test_state = self.SUCCEEDED if success else self.FAILURE
+        self.log.warning("test state %s" % self.test_state)
         return self.succeeded()
 
     def succeeded(self):
-        return self.state in (self.SUCCEEDED, self.CONTROLLED_FAILURE)
+        return self.test_state in (self.SUCCEEDED, self.CONTROLLED_FAILURE)
 
     def dump(self):
         output.output.test_open(self.name)
-        output.output.message("Success", status=self.state)
+        output.output.message("Success", status=self.test_state)
         if not self.succeeded():
             output.output.test_failed(type=self.reason,
                                       message=str(self.exception)
                                       if self.exception
                                       else "Test output following",
                                       details="No details available")
-        output.output.test_stdout("\n".join([destr(r.stdout)
-                                             for r in self.results]))
+        for result in self.test_results:
+            block_name = "COMMAND: {}".format(" ".join(result[0]))
+            output.output.block_open(block_name)
+            output.output.dump(result[2])
+            output.output.dump(result[3])
+            output.output.block_done()
         output.output.test_done()
+
 
 if __name__ == "__main__":
     print("Don't do this :)")
