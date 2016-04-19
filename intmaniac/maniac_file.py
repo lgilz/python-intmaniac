@@ -1,3 +1,4 @@
+from intmaniac import output
 from intmaniac.testrun import Testrun
 from intmaniac.tools import fail, deep_merge, get_logger
 
@@ -33,6 +34,8 @@ def parse(argconfig):
             fail("This version only uses version '2' config files!")
         if conf_version == '2':
             return _parsev2(fileconfig, argconfig)
+        elif conf_version == '3':
+            return _parsev3(fileconfig, argconfig)
         else:
             fail("Unknown config file version: '{}'. "
                  "Must be: <absent>, '1' or '2'".format(conf_version))
@@ -81,6 +84,121 @@ def _parsev2(fileconfig, argconfig):
     # now, create the test run object
     tr = Testrun('default', compose, **tester)
     return [tr]
+
+
+def _parsev3(fileconfig, argconfig):
+    """
+    Reads and understands the intmaniac configuration file (v3), and returns
+    the Testrun objects.
+    :param fileconfig: The de-serialized configuration as dict object
+    :param argconfig: The global config object from the command line params.
+    :return: A list of Testrun objects
+    """
+    # first, check for missing keys.
+    # we need:
+    #   - version
+    #   - compose_template
+    #   - tester_image
+    needed_keys = [
+        'compose_templates',
+        'tester_configs',
+        'tests',
+    ]
+    optional_keys = [
+        'environments',
+    ]
+    errors = []
+    for key in needed_keys:
+        if key not in fileconfig:
+            errors.append("CONFIG FILE: missing key '{}'"
+                          .format(key))
+        elif not isinstance(fileconfig[key], dict):
+            errors.append("CONFIG FILE: key '{}' must be of type dict"
+                          .format(key))
+        elif len(fileconfig[key]) == 0:
+            errors.append("CONFIG FILE: key '{}' have at least one entry"
+                          .format(key))
+    if len(errors):
+        fail("\n" + "\n".join(errors))
+    # create optional keys with defualt values if not present
+    for key in optional_keys:
+        if key not in fileconfig:
+            # it's always name -> value with the keys. ALWAYS.
+            # makes our life simpler.
+            fileconfig[key] = {}
+    # extract some variables for convenience
+    compose_templates = fileconfig['compose_templates']
+    tests = fileconfig['tests']
+    testers = fileconfig['tester_configs']
+    environments = fileconfig['environments']
+    # make docker-compose template paths absolute
+    for k, v in compose_templates.items():
+        if not isabs(v):
+            compose_templates[k] = join(dirname(argconfig.config_file), v)
+    # test.tester/s, test.template/s
+    for test_name, test in tests.items():
+        # move tester to testers, template to templates, environment ... .
+        # do not care if it already exists
+        for key in ('tester_config', 'compose_template', 'environment'):
+            if key in test:
+                test[key + "s"] = test[key]
+                del test[key]
+            # make list out of entry
+            if not isinstance(test[key+"s"], list):
+                test[key+"s"] = [test[key+"s"]]
+    # go through and check
+    for test_name, test in tests.items():
+        for key in ('tester_configs', 'compose_templates'):
+            if key not in test:
+                errors.append("CONFIG FILE: test '{}' needs a '{}' key"
+                              .format(test_name, key))
+    if len(errors):
+        fail("\n" + "\n".join(errors))
+    # FINALLY, create test runs
+    test_runs = []
+    fc = fileconfig         # convenience variable (shorter)
+    for test_name, test in tests.items():
+        test_num = 0
+        for tester_name in test['tester_configs']:
+            for template_name in test['compose_templates']:
+                for environment_name in test['environments']:
+                    # check references
+                    if tester_name not in testers:
+                        errors.append("CONFIG FILE: no tester definition named '{}'"
+                                      .format(tester_name))
+                    if template_name not in compose_templates:
+                        errors.append("CONFIG FILE: no template definition named '{}'"
+                                      .format(tester_name))
+                    if environment_name not in environments:
+                        errors.append("CONFIG FILE: no environment definition named '{}'"
+                                      .format(tester_name))
+                    if len(errors):
+                        fail("\n" + "\n".join(errors))
+                    # quick hack to this is a COPY of the original entry
+                    tester = deep_merge({}, fc['tester_configs'][tester_name])
+                    environment = fc['environments'][environment_name]
+                    template = fc['compose_templates'][template_name]
+                    # merge in the environment to the tester config
+                    if 'environment' in tester:
+                        environment = deep_merge(tester['environment'],
+                                                 environment)
+                    tester['environment'] = environment
+                    tester = _prepare_tester_config(tester, argconfig)
+                    template = _prepare_docker_compose_template(template,
+                                                                'environment',
+                                                                argconfig)
+                    tr = Testrun("{}_{}".format(test_name, test_num),
+                                 template,
+                                 **tester)
+                    test_num += 1
+                    test_runs.append(tr)
+                    output.output.block_open("Test '{}_{}'".format(test_name, test_num))
+                    output.output.dump("tester: {}".format(tester_name))
+                    output.output.dump("template: {}".format(template_name))
+                    output.output.dump("environment: {}".format(environment_name))
+                    output.output.block_done()
+    # now, create the test run object
+    return test_runs
 
 
 def _prepare_tester_config(tester_config, global_config, more_envs={}):
