@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from intmaniac.testset import Testset
 from intmaniac import maniac_file
 from intmaniac import tools
 from intmaniac import output
