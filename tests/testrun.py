@@ -7,7 +7,7 @@ from tests.testconfigs import *
 import unittest
 
 
-class TTestrun(unittest.TestCase):
+class TestTestrun(unittest.TestCase):
 
     def setUp(self):
         self.testrun = Testrun('default', "/hoo/ha", **testrun_configs['default'])
