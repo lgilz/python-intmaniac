@@ -73,6 +73,15 @@ class Testrun(object):
     def __repr__(self):
         return "%s, state '%s'" % (self.name, self.test_state)
 
+    def __eq__(self, other):
+        eq = True
+        eq = eq and self.test_env == other.test_env
+        eq = eq and self.test_image == other.test_image
+        eq = eq and self.template == other.template
+        eq = eq and self.test_commands == other.test_commands
+        eq = eq and self.test_linked_services == other.test_linked_services
+        return eq
+
     def _run_docker_compose(self, command, *args, **kwargs):
         base_command = "docker-compose -f {} -p {}".format(
             self.template, self.sanitized_name
