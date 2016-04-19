@@ -1,10 +1,19 @@
 CHANGELOG
 =========
 
+0.11.0
+------
+
+Date: 2016-04-19 (unreleased)
+
+- v3 file format implemented.
+- ``pre:`` and ``post:`` hooks implemented for tester_configs (untested)
+
+
 0.10.0
 ------
 
-Date: 2016-04-15
+Date: 2016-04-15 (unreleased)
 
 - Fully incompatible rewrite because of new test file format "v2"
 - New internal test mechanism
