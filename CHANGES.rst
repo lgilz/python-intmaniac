@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+0.11.1
+------
+
+Date: 2016-04-20
+
+- Fixed bug in config file parsing
+
+
 0.11.0
 ------
 
