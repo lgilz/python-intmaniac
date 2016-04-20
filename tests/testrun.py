@@ -16,13 +16,17 @@ class TestTestrun(unittest.TestCase):
                          "No mocking available in this Python version")
     @patch('intmaniac.testrun.run_command')
     def test_environment_setup(self, rc):
-        wanted_service_tuples = [('default_one_1', 'one'), ('default_two_1', 'two')]
+        wanted_test_base = 'defaultha'
+        wanted_service_tuples = [('{}_one_1'.format(wanted_test_base), 'one'),
+                                 ('{}_two_1'.format(wanted_test_base), 'two')]
         wanted_command_base = ['docker', 'run', '--rm',
                                '-e', 'TARGET_URL=rsas',
-                               '--link', 'default_two_1:two',
+                               '--link', 'defaultha_two_1:two',
                                'my/testimage:latest']
-        string_input = "creating default_one_1\ncreating default_two_1\n"
-        rc.return_value = ("docker-compose", 0, None, string_input)
+        simulated_dc_output = "creating {0}_one_1\n" \
+                              "shoo shabala\n" \
+                              "creating {0}_two_1\n".format(wanted_test_base)
+        rc.return_value = ("docker-compose", 0, None, simulated_dc_output)
         tr = self.testrun
         # now test
         tr._setup_test_env()
@@ -31,7 +35,7 @@ class TestTestrun(unittest.TestCase):
 
     def test_test_name_construction(self):
         tr = Testrun('default', "/hoo/ha", **testrun_configs['default'])
-        self.assertEqual('default', tr.name)
+        self.assertEqual('default-ha', tr.name)
         tr = Testrun(None, "/hoo/ha", **testrun_configs['default'])
         self.assertEqual('ha', tr.name)
 

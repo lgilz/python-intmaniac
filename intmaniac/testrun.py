@@ -44,7 +44,7 @@ class Testrun(object):
                  **kwargs):
         self.name = "{}-{}".format(name, basename(compose_file))\
             if name else basename(compose_file)
-        self.sanitized_name = resub("[^a-zA-Z0-9_]", "-", self.name)
+        self.sanitized_name = resub("[^a-z0-9]", "", self.name.lower())
         self.template = compose_file
         # extract "top level" parameters
         self.test_env = kwargs.pop('environment', {})
