@@ -194,19 +194,17 @@ def _v3_create_test_with(fileconfig, argconfig,
         fail("\n" + "\n".join(errors))
     # quick hack to this is a COPY of the original entry
     tester = deep_merge({}, fileconfig['tester_configs'][tester_name])
-    if env_name:
-        environment = fileconfig['environments'][env_name]
-    else:
-        environment = {}
+    # take care of the tester environment
+    conf_env = fileconfig['environments'][env_name] \
+        if env_name else {}
+    tester['environment'] = deep_merge(tester['environment'], conf_env) \
+        if tester.get('environment') else conf_env
+    # get template
     template = fileconfig['compose_templates'][template_name]
     # merge in the environment to the tester config
-    if 'environment' in tester:
-        environment = deep_merge(tester['environment'],
-                                 environment)
-    tester['environment'] = environment
     tester = _prepare_tester_config(tester, argconfig)
     template = _prepare_docker_compose_template(template,
-                                                'environment',
+                                                tester['environment'],
                                                 argconfig)
     output.output.block_open("Test '{}_{}'".format(test_name, test_num))
     output.output.dump("tester: {}".format(tester_name))
