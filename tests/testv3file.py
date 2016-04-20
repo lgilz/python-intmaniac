@@ -16,7 +16,7 @@ class TestV3File(unittest.TestCase):
             isf.return_value = True
             self.config = intmaniac._parse_args(["-e", "cmd=too"])
 
-    def test_v3fileformat_full(self):
+    def test_v3file_full(self):
         with patch(self.patch_pdct) as pdc:
             pdc.side_effect = lambda x, *args: x
             rv = maniac_file._parsev3(v3_config_0, self.config)
@@ -25,7 +25,7 @@ class TestV3File(unittest.TestCase):
                 self.assertTrue(tr in rv, "'{}' not in created tests"
                                 .format(tr.name))
 
-    def test_v3fileformat_minimal(self):
+    def test_v3file_minimal(self):
         with patch(self.patch_pdct) as pdc:
             pdc.side_effect = lambda x, *args: x
             rv = maniac_file._parsev3(v3_config_minimal, self.config)
