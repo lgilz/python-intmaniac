@@ -57,7 +57,9 @@ tester_config:
   links: []
 
   # optional, can be string, list of strings, list of lists of strings
-  commands: "..."
+  commands: "..."       # executed in the tester container
+  pre: "..."            # executed on the local machine
+  post: "..."           # same. (example: "sleep 10")
 
   # optional, format { key: value }
   environment: {}

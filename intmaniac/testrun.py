@@ -119,6 +119,23 @@ class Testrun(object):
             raise e
         return rv
 
+    def _run_local_commands(self, commands):
+        """
+        Executes a list of commands on the local machine (pre- and post-
+        commands, intendedly.
+        :param commands: The commands to execute
+        :return: A list with the return objects.
+        """
+        if not commands:
+            return
+        rvs = []
+        for command in _build_exec_array(commands):
+            rvs.append(self._run_command(command,
+                                         throw=True,
+                                         env=dict(os.environ,
+                                                  **self.test_env)))
+        return rvs
+
     def _run_test_command(self, command):
         # we need to do this here, cause
         # construct envs
@@ -172,14 +189,11 @@ class Testrun(object):
         success = True
         try:
             self._setup_test_env()
-            if self.meta.get('pre'):
-                for command in _build_exec_array(self.meta['pre']):
-                    rv = self._run_command(command,
-                                           throw=True,
-                                           env=dict(os.environ, **self.test_env))
+            self._run_local_commands(self.meta.get('pre', None))
             for test_command in self.test_commands:
                 rv = self._run_test_command(test_command)
                 self.test_results.append(rv)
+            self._run_local_commands(self.meta.get('post', None))
             self._run_docker_compose("stop".split(" "))
             self._run_docker_compose("rm -f".split(" "))
         except KeyError as e:
