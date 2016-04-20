@@ -12,7 +12,7 @@ class TestV3File(unittest.TestCase):
     def setUp(self):
         with patch('intmaniac.isfile') as isf:
             isf.return_value = True
-            self.config = intmaniac._parse_args([])
+            self.config = intmaniac._parse_args(["-e", "cmd=too"])
 
     def test_v3fileformat_full(self):
         with patch('intmaniac.maniac_file._prepare_docker_compose_template') as pdc:

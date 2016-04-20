@@ -68,12 +68,14 @@ tests:
 
 """)
 
+
+# all of those need "-e cmd=too"
 tester_config_test01 = yaml.safe_load("""
 ---
 image: image:latest
 links: ["cvs:cvs"]
 commands: [["command0"]]
-environment: {one: two}
+environment: {one: two, cmd: too}
 """)
 
 # dev1, env0
@@ -82,7 +84,7 @@ tester_config_test11_and_13 = yaml.safe_load("""
 image: image:earliest
 links: ["image:link"]
 commands: [["command1"]]
-environment: {one: two}
+environment: {one: two, cmd: too}
 """)
 
 # dev1, env1
@@ -91,7 +93,7 @@ tester_config_test12_and_14 = yaml.safe_load("""
 image: image:earliest
 links: ["image:link"]
 commands: [["command1"]]
-environment: {thr: for}
+environment: {thr: for, cmd: too}
 """)
 
 # dev2, env0
@@ -100,7 +102,7 @@ tester_config_test15_and_17 = yaml.safe_load("""
 image: image:middle
 links: ["wo:ho"]
 commands: [["command2"]]
-environment: {one: two}
+environment: {one: two, cmd: too}
 """)
 
 # dev2, env1
@@ -109,7 +111,7 @@ tester_config_test16_and_18 = yaml.safe_load("""
 image: image:middle
 links: ["wo:ho"]
 commands: [["command2"]]
-environment: {thr: for}
+environment: {thr: for, cmd: too}
 """)
 
 
