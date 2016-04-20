@@ -42,7 +42,8 @@ class Testrun(object):
                  name,
                  compose_file,
                  **kwargs):
-        self.name = name if name else basename(compose_file)
+        self.name = "{}-{}".format(name, basename(compose_file))\
+            if name else basename(compose_file)
         self.sanitized_name = resub("[^a-zA-Z0-9_]", "-", self.name)
         self.template = compose_file
         # extract "top level" parameters
