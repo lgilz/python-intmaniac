@@ -206,7 +206,8 @@ def _v3_create_test_with(fileconfig, argconfig,
     template = _prepare_docker_compose_template(template,
                                                 tester['environment'],
                                                 argconfig)
-    output.output.block_open("Test '{}_{}'".format(test_name, test_num))
+    output.output.block_open("Settings of test '{}_{}'".format(test_name,
+                                                               test_num))
     output.output.dump("tester: {}".format(tester_name))
     output.output.dump("template: {}".format(template_name))
     if env_name:
