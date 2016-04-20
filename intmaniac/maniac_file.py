@@ -158,7 +158,7 @@ def _parsev3(fileconfig, argconfig):
         test_num = 0
         for tester_name in test['tester_configs']:
             for template_name in test['compose_templates']:
-                _make_test = partial(_create_test_with,
+                _make_test = partial(_v3_create_test_with,
                                      fileconfig, argconfig,
                                      test_name,
                                      tester_name, template_name)
@@ -172,9 +172,9 @@ def _parsev3(fileconfig, argconfig):
     return test_runs
 
 
-def _create_test_with(fileconfig, argconfig,
-                      test_name, tester_name, template_name, env_name,
-                      test_num):
+def _v3_create_test_with(fileconfig, argconfig,
+                         test_name, tester_name, template_name, env_name,
+                         test_num):
     errors = []
     # convenience vars
     compose_templates = fileconfig['compose_templates']
