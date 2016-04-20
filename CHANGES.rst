@@ -1,6 +1,16 @@
 CHANGELOG
 =========
 
+0.10.0
+------
+
+Date: 2016-04-15
+
+- Fully incompatible rewrite because of new test file format "v2"
+- New internal test mechanism
+- v3 file format already planned (v2 is only one test, v3 is a matrix test)
+
+
 0.9.5
 -----
 
