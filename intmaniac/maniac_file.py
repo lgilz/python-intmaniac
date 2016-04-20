@@ -5,6 +5,7 @@ from intmaniac.tools import fail, deep_merge, get_logger
 import yaml
 
 import tempfile
+from functools import partial
 from re import search as research
 from os import write as fdwrite, close as fdclose
 from os.path import dirname, join, isabs
@@ -68,9 +69,6 @@ def _parsev2(fileconfig, argconfig):
     for key in needed_keys:
         if key not in fileconfig:
             errors.append("CONFIG FILE: missing key '{}'".format(key))
-    if not isinstance(fileconfig['compose_template'], str):
-        errors.append("CONFIG FILE: 'compose_template' key must have "
-                      "a string value")
     if len(errors):
         fail("\n" + "\n".join(errors))
     # prepare the path to the docker-compose template
@@ -143,9 +141,9 @@ def _parsev3(fileconfig, argconfig):
             if key in test:
                 test[key + "s"] = test[key]
                 del test[key]
-            # make list out of entry
-            if not isinstance(test[key+"s"], list):
-                test[key+"s"] = [test[key+"s"]]
+                # make list out of entry
+                if not isinstance(test[key+"s"], list):
+                    test[key+"s"] = [test[key+"s"]]
     # go through and check
     for test_name, test in tests.items():
         for key in ('tester_configs', 'compose_templates'):
@@ -156,49 +154,70 @@ def _parsev3(fileconfig, argconfig):
         fail("\n" + "\n".join(errors))
     # FINALLY, create test runs
     test_runs = []
-    fc = fileconfig         # convenience variable (shorter)
     for test_name, test in tests.items():
         test_num = 0
         for tester_name in test['tester_configs']:
             for template_name in test['compose_templates']:
-                for environment_name in test['environments']:
-                    # check references
-                    if tester_name not in testers:
-                        errors.append("CONFIG FILE: no tester definition named '{}'"
-                                      .format(tester_name))
-                    if template_name not in compose_templates:
-                        errors.append("CONFIG FILE: no template definition named '{}'"
-                                      .format(tester_name))
-                    if environment_name not in environments:
-                        errors.append("CONFIG FILE: no environment definition named '{}'"
-                                      .format(tester_name))
-                    if len(errors):
-                        fail("\n" + "\n".join(errors))
-                    # quick hack to this is a COPY of the original entry
-                    tester = deep_merge({}, fc['tester_configs'][tester_name])
-                    environment = fc['environments'][environment_name]
-                    template = fc['compose_templates'][template_name]
-                    # merge in the environment to the tester config
-                    if 'environment' in tester:
-                        environment = deep_merge(tester['environment'],
-                                                 environment)
-                    tester['environment'] = environment
-                    tester = _prepare_tester_config(tester, argconfig)
-                    template = _prepare_docker_compose_template(template,
-                                                                'environment',
-                                                                argconfig)
-                    tr = Testrun("{}_{}".format(test_name, test_num),
-                                 template,
-                                 **tester)
+                _make_test = partial(_create_test_with,
+                                     fileconfig, argconfig,
+                                     test_name,
+                                     tester_name, template_name)
+                if test.get('environments'):
+                    for env_name in test['environments']:
+                        test_num += 1
+                        test_runs.append(_make_test(env_name, test_num))
+                else:
                     test_num += 1
-                    test_runs.append(tr)
-                    output.output.block_open("Test '{}_{}'".format(test_name, test_num))
-                    output.output.dump("tester: {}".format(tester_name))
-                    output.output.dump("template: {}".format(template_name))
-                    output.output.dump("environment: {}".format(environment_name))
-                    output.output.block_done()
-    # now, create the test run object
+                    test_runs.append(_make_test(None, test_num))
     return test_runs
+
+
+def _create_test_with(fileconfig, argconfig,
+                      test_name, tester_name, template_name, env_name,
+                      test_num):
+    errors = []
+    # convenience vars
+    compose_templates = fileconfig['compose_templates']
+    testers = fileconfig['tester_configs']
+    environments = fileconfig['environments']
+    # check references
+    if tester_name not in testers:
+        errors.append("CONFIG FILE: no tester definition named '{}'"
+                      .format(tester_name))
+    if template_name not in compose_templates:
+        errors.append("CONFIG FILE: no template definition named '{}'"
+                      .format(tester_name))
+    if env_name and env_name not in environments:
+        errors.append("CONFIG FILE: no environment definition named '{}'"
+                      .format(tester_name))
+    if len(errors):
+        fail("\n" + "\n".join(errors))
+    # quick hack to this is a COPY of the original entry
+    tester = deep_merge({}, fileconfig['tester_configs'][tester_name])
+    if env_name:
+        environment = fileconfig['environments'][env_name]
+    else:
+        environment = {}
+    template = fileconfig['compose_templates'][template_name]
+    # merge in the environment to the tester config
+    if 'environment' in tester:
+        environment = deep_merge(tester['environment'],
+                                 environment)
+    tester['environment'] = environment
+    tester = _prepare_tester_config(tester, argconfig)
+    template = _prepare_docker_compose_template(template,
+                                                'environment',
+                                                argconfig)
+    output.output.block_open("Test '{}_{}'".format(test_name, test_num))
+    output.output.dump("tester: {}".format(tester_name))
+    output.output.dump("template: {}".format(template_name))
+    if env_name:
+        output.output.dump("environment: {}".format(env_name))
+    output.output.block_done()
+    tr = Testrun("{}_{}".format(test_name, test_num),
+                 template,
+                 **tester)
+    return tr
 
 
 def _prepare_tester_config(tester_config, global_config, more_envs={}):

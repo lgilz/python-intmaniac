@@ -14,6 +14,21 @@ testrun_configs = {
     }
 }
 
+v3_config_minimal = yaml.safe_load("""
+---
+compose_templates: {template0: /template0}
+
+tester_configs:
+  tester_def0:
+    image: image:latest
+    links: ["cvs:cvs"]
+
+tests:
+  test0:
+    compose_template: template0
+    tester_config: tester_def0
+""")
+
 v3_config_0 = yaml.safe_load("""
 ---
 environments:
