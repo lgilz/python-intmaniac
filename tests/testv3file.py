@@ -1,7 +1,7 @@
 import intmaniac
 from intmaniac import maniac_file
-from tests.testconfigs import *
-from tests.testmock import *
+from tests.configsetup import *
+from tests.mocksetup import *
 
 import unittest
 

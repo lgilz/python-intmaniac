@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 from intmaniac.testrun import Testrun
-from tests.testmock import *
-from tests.testconfigs import *
+from tests.mocksetup import *
+from tests.configsetup import *
 
 import unittest
 
