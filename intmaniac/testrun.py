@@ -6,7 +6,7 @@ from intmaniac import output
 
 import os
 from os.path import basename
-from re import sub as resub, search as research
+from re import sub as resub, search as research, compile as recomp
 
 
 def _build_exec_array(base=None):
@@ -153,12 +153,11 @@ class Testrun(object):
         rv = self._run_docker_compose("up -d", throw=True)
         # first, set up "container_name -> service_name" tuples
         outtext = rv[3]  # docker-compose outputs to stderr
+        matcher = recomp('{}_(.+)_[0-9]+$'.format(self.sanitized_name))
         lines = list(map(lambda x: x.strip(), outtext.split("\n")))
-        lines = list(filter(lambda x: x.strip() != "", lines))
+        lines = list(filter(lambda x: matcher.search(x) is not None, lines))
         self.run_containers = list(map(lambda x: (x,
-                                                  research('{}_(.+)_[0-9]+'
-                                                           .format(self.sanitized_name),
-                                                           x)
+                                                  matcher.search(x)
                                                   .groups()[0]),
                                        [line.split(" ")[1] for line in lines]))
 
