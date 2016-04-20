@@ -1,10 +1,22 @@
 CHANGELOG
 =========
 
-0.11.1
+0.11.2
 ------
 
 Date: 2016-04-20
+
+- Fixed non-processing of environment settings from the cmdline
+- Fixed docker-compose output evaluation
+- Updated failure behavior during environment setup
+- Updated tests accordingly
+- Updated README with more and more precise information
+
+
+0.11.1
+------
+
+Date: 2016-04-20 (unreleased)
 
 - Fixed bug in config file parsing
 
