@@ -1,16 +1,10 @@
 # INTManiac
 
-This python script defines a "matrix test runner", which is basically a fancy way of saying ...
+This python tool enables you to run a test program against a set of containers to smoke- / integration- / acceptance-test your program. `docker-compose` is used to create your program environment stack, while `docker` is used to run a container with a test program against that stack.
 
-* Define one or more `docker-compose` templates
-* Define a set of variables
-* Combine compose templates and variables and run all combinations.
+You can run a matrix test, which means you can check several combinations of containers with each other.
 
-The idea is that you have a program / service / thing, which has to be integration tested, user acceptance tested, or otherwise tested, and you want to do this in an automated way using docker-compose environments.
-
-For an example of a possible configuration see below.
-
-There is a constantly updated docker container available under:
+This tool is available as docker container as well. There is a constantly updated docker container available under:
 
 * `quay.io/flypenguin/intmaniac`
 
@@ -19,100 +13,171 @@ There is a constantly updated docker container available under:
 
 For most products you want to test them embedded in a system of connected components. For example if you use a database, it might be good to know with which versions of the database your product works, or that your latest build has still the same API functionality than your stable branch.
 
-`intmaniac` enables you to write a parameterized `docker-compose` template which describes your full test environment, and then run tests against it.
+`intmaniac` enables you to write a parameterized `docker-compose` template which describes your full test environment, and then run tests against it. It uses a `docker-compose` template to create your application stack, and then uses `docker` to run a container with a test program. The container is linked against your application stack using the `links` key in the `tester_config(s)`, so everything happens completely separate from your actual host network.
 
-It is assumed that one container in your composition contains a test tool of the system, which is then executed with one or more commands. For this the testing container (the default name is `test-service`) is executed by intmania with a set of user-defined commands. `docker-compose` should bring up all dependent services on the first execution of the `docker-compose run` command.
+All tests are executed in sequence.
 
-*NOTE:* The tests are executed on the same host, all in parallel. You should have enough resources to ensure successful execution :) . If not, you can layer the test set defintions in an array, where all test sets in the outer array are executed sequentially. (see example at the bottom)
 
-## Configuration examples
+## TODO
+
+A lot basically ...
+
+* Unit tests are not too good (ha-ha...)
+* If a command blocks forever intmaniac will also block forever
+* More information about service outputs would also be nice (currently it's ONLY the tester which is printed, this will change soon I guess)
+* The text output sucks. Seriously. I use it with TeamCity only right now, so I did not put much effort into this.
+* The code quality is ... so-so, I guess. Much better than before, though. :)
+* And a lot more probably.
+
+
+## Configuration reference
 
 
 ### intmaniac.yaml
 
-    ---
-    version: 1.0            # no effect so far
-    global:
-      environment:
-        TEST_CONTAINER: my_container:v1.0
-        CONFIG_CONTAINER: my_config:v1.0
-        DB_CONTAINER: postgres:9.3
-        DB_PORT: 5432
-        DB_TYPE: postgres
+Use version 2 for a single test run (one testing container in one docker-compose setup).
 
-    testsets:
-
-      # this is a test group. the config settings under "global" above are
-      # applied unless overwritten by the unique tests
-
-      database-psql:        # a test set, contains tests
-
-        postgres95:         # this is a test
-          environment:
-            DB_CONTAINER: postgres:9.5
-
-        postgres94:         # and another
-          environment:
-            DB_CONTAINER: postgres:9.4
-
-      database-maria:       # another test set
-
-        maria10:            # with another test
-          environment:
-            DB_CONTAINER: maria:v10.0
-            DB_PORT: 1111
-            DB_TYPE: mysql
-          meta:
-            allow_failure: true
-
-      configurations:   # aand another test set
-
-        latest:
-          environment:
-            CONFIG_CONTAINER: my_config:latest
+```yaml
+---
+version: 2          # can be string or int, for ONE single test combination
 
 
-### docker-compose.yml
-
-    # test-service is the default name. if you change it, you have
-    # to set the meta.test_service key accordingly.
-    test-service:
-
-      image: my_company_hub/tests/runner
-
-      # this is necessary to force docker-compose to create and start
-      # the other services when starting test-service
-      links:
-        - test-me:test-me
-
-    test-me:
-      image: my_company_hub/%%TEST_CONTAINER%%
-      environment:
-        - DB_TYPE=%%DB_TYPE%%
-        - DB_HOST=db
-        - DB_PORT=%%DB_PORT%%
-      links:
-        - db:db
-
-    db:
-      image: my_company_hub/%%DB_CONTAINER%%
+# required, if path is relative it will be interpreted as relative
+# to this file
+compose_template: "here/be_dragons.yml"
 
 
-### intmaniac.yaml - sequential execution
+# required, one must be present.
+tester_config:
 
-If you want sequential execution of test(sets), then you can define multiple test set groups in an array. The test sets in this array are executed sequentially, and if the first set fails the second set is not executed.
+  # required
+  image: my/image:latest
 
-    version: 1.0
-    global: {}
-    testsets:
-      - testset1:
-          testone:
-            environment: {}
-          testtwo:
-            environment: {}
-        testset2:
-          testthree:
-            environment: {}
-      - testset3:
-          testfour:
-            environment: {}
+  # required, format: [ "SERVICE_NAME_IN_COMPOSE_TEMPLATE:SERVICE_ALIAS", ... ]
+  links: []
+
+  # optional, can be string, list of strings, list of lists of strings
+  commands: "..."
+
+  # optional, format { key: value }
+  environment: {}
+
+  # optional. true / false. default is false.
+  allow_failure: false
+```
+
+Use version 3 for a matrix test (multiple environments, set-ups, tests, etc.). The (non-working) example below will create two tests. Basically every possible combination is created for each test and then run.
+
+```yaml
+---
+version: 3          # can be string or int, allows for matrix test
+
+# required, must have one entry, format: { name: template_path }
+compose_templates:
+  my_template: "..."        # as above
+
+# required, must have one entry. format: { name: tester_config }
+# tester_config is the same structure as defined above.
+# if there is an environment definition it is merged UNDER the environment
+# defined in the "tests" section (lower precedence)
+tester_configs:
+  my_tester: {}             # as above
+  my_other_tester: {}       # as above
+
+# optional.
+environments:
+  my_environment: {}        # as above
+
+# required, must have one entry. see below for example
+tests:
+  default:
+
+    # required. either "string" or [string, ...]
+    # the key can also be named "tester_configs". DO NOT define both.
+    tester_config: [my_tester, my_other_tester]
+
+    # required. either "string" or [string, ...]
+    # the key can also be named "compose_templates". DO NOT define both.
+    compose_template: my_template
+
+    # optional. either "string" or [string, ...]
+    # the key can also be named "environments". DO NOT define both.
+    environment: my_environment
+```
+
+## Full example, with docker-compose file
+
+```yaml
+---
+# docker-compose-pg.yml
+
+test-me:
+  image: my_company_hub/%%TEST_CONTAINER%%
+  environment:
+    - DB=postgresql://db:5432
+  links:
+    - db:db
+
+db:
+  image: postgres:%%PG_VERSION%%
+
+---
+# docker-compose-mongo.yml
+
+test-me:
+  image: my_company_hub/%%TEST_CONTAINER%%
+  environment:
+    - DB=mongodb://db:27019
+  links:
+    - db:db
+
+db:
+  image: mongo:%%MONGO_VERSION%%
+
+---
+# intmaniac.yaml
+
+version: 3
+
+compose_templates:
+  default: docker-compose-pg.yml
+  next: docker-compose-mongo.yml
+
+environments:
+  postgres93: { PG_VERSION: "9.3" }
+  postgres94: { PG_VERSION: "9.4" }
+  postgres95: { PG_VERSION: "9.5" }
+  mongodb24:  { MONGO_VERSION: "2.4" }
+  mongodb32:  { MONGO_VERSION: "3.2" }
+
+
+tester_configs:
+  standard_tester:
+    image: myhub.com/myproduct/acceptance:production
+    links: ["test-me:testservice"]
+    environment:
+      TEST_URL: http://testservice:80
+  prerelease:
+    image: myhub.com/myproduct/acceptance:beta
+    links: ["test-me:testservice"]
+    allow_failure: true
+    environment:
+      TEST_URL: http://testservice:80
+
+tests:
+  databases:
+    compose_template: default
+    tester_config: [standard_tester, prerelease]
+    environments: [ postgres93, postgres94, postgres95 ]
+  prerelease-pg:
+    compose_template: default
+    tester_config: prerelease
+    environment: [postgres94,postgres95]
+  prerelease-mongo:
+    compose_template: next
+    tester_config: prerelease
+    environment: [mongo24,mongo32]
+```
+In this case it is assumed that `TEST_CONTAINER` comes from a commandline `-e TEST_CONTAINER=...` setting.
+
+Now you should have an idea about how this works.
