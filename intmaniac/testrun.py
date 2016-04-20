@@ -149,7 +149,7 @@ class Testrun(object):
             self._run_docker_compose("pull".split(), throw=True)
             self._run_command("docker pull {}".format(self.test_image).split(),
                               throw=True)
-        rv = self._run_docker_compose("up -d")
+        rv = self._run_docker_compose("up -d", throw=True)
         # first, set up "container_name -> service_name" tuples
         outtext = rv[3]  # docker-compose outputs to stderr
         lines = list(map(lambda x: x.strip(), outtext.split("\n")))
