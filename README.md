@@ -53,7 +53,9 @@ tester_config:
   # required
   image: my/image:latest
 
-  # required, format: [ "SERVICE_NAME_IN_COMPOSE_TEMPLATE:SERVICE_ALIAS", ... ]
+  # required, format: [linked_service_from_compose_file, ...]
+  # a service "myservice" will be linked into the test container under
+  # that name (so that the host name "myservice" will resolve)
   links: []
 
   # optional, can be string, list of strings, list of lists of strings
