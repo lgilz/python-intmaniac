@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+0.11.3
+------
+
+Date: 2016-04-21
+
+- Fixed bug in container name extraction for older ``docker-compose`` versions
+
+
 0.11.2
 ------
 
