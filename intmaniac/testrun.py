@@ -145,6 +145,20 @@ class Testrun(object):
         return self._run_command(runthis, throw=True, env=dict(os.environ,
                                                               **self.test_env))
 
+    def _extract_container_names_from(self, outtext):
+        matcher = recomp('({}_(.+)_[0-9]+)'.format(self.sanitized_name))
+        lines = list(map(lambda x: x.strip(), outtext.split("\n")))
+        lines = list(filter(lambda x: matcher.search(x) is not None, lines))
+        run_containers = []
+        for line in lines:
+            match = matcher.search(line)
+            run_containers.append((match.groups()[0], match.groups()[1]))
+        self.run_containers = run_containers
+        self.log.warning("FOUND TEST CONTAINERS: {}"
+            .format(", ".join(
+            ["{}->{}".format(k[0], k[1]) for k in self.run_containers]
+        )))
+
     def _setup_test_env(self):
         if self.meta.get('pull', None):
             self._run_docker_compose("pull".split(), throw=True)
@@ -153,18 +167,7 @@ class Testrun(object):
         rv = self._run_docker_compose("up -d", throw=True)
         # first, set up "container_name -> service_name" tuples
         outtext = rv[3]  # docker-compose outputs to stderr
-        matcher = recomp('{}_(.+)_[0-9]+$'.format(self.sanitized_name))
-        lines = list(map(lambda x: x.strip(), outtext.split("\n")))
-        lines = list(filter(lambda x: matcher.search(x) is not None, lines))
-        self.run_containers = list(map(lambda x: (x,
-                                                  matcher.search(x)
-                                                  .groups()[0]),
-                                       [line.split(" ")[1] for line in lines]))
-
-        self.log.warning("FOUND TEST CONTAINERS: {}"
-                         .format(", ".join(
-            ["{}->{}".format(k[0], k[1]) for k in self.run_containers]
-        )))
+        self._extract_container_names_from(rv[3])
         # second, set up docker run base command
         runthis = "docker run --rm".split()
         for k, v in self.test_env.items():

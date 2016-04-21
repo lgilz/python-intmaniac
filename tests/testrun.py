@@ -18,14 +18,19 @@ class TestTestrun(unittest.TestCase):
     def test_environment_setup(self, rc):
         wanted_test_base = 'defaultha'
         wanted_service_tuples = [('{}_one_1'.format(wanted_test_base), 'one'),
-                                 ('{}_two_1'.format(wanted_test_base), 'two')]
+                                 ('{}_two_1'.format(wanted_test_base), 'two'),
+                                 ('{}_thr_1'.format(wanted_test_base), 'thr'),
+                                 ('{}_for_1'.format(wanted_test_base), 'for')]
         wanted_command_base = ['docker', 'run', '--rm',
                                '-e', 'TARGET_URL=rsas',
                                '--link', 'defaultha_two_1:two',
                                'my/testimage:latest']
         simulated_dc_output = "creating {0}_one_1\n" \
                               "shoo shabala\n" \
-                              "creating {0}_two_1\n".format(wanted_test_base)
+                              "creating {0}_two_1\n"\
+                              "creating {0}_thr_1...\n"\
+                              "creating {0}_for_1 ...\n"\
+                              .format(wanted_test_base)
         rc.return_value = ("docker-compose", 0, None, simulated_dc_output)
         tr = self.testrun
         # now test
