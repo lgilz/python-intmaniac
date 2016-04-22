@@ -16,14 +16,14 @@ class TestTestrun(unittest.TestCase):
                          "No mocking available in this Python version")
     @patch('intmaniac.testrun.run_command')
     def test_environment_setup(self, rc):
-        wanted_test_base = 'defaultha'
+        wanted_test_base = 'intmaniacdefaultha'
         wanted_service_tuples = [('{}_one_1'.format(wanted_test_base), 'one'),
                                  ('{}_two_1'.format(wanted_test_base), 'two'),
                                  ('{}_thr_1'.format(wanted_test_base), 'thr'),
                                  ('{}_for_1'.format(wanted_test_base), 'for')]
         wanted_command_base = ['docker', 'run', '--rm',
                                '-e', 'TARGET_URL=rsas',
-                               '--link', 'defaultha_two_1:two',
+                               '--link', 'intmaniacdefaultha_two_1:two',
                                'my/testimage:latest']
         simulated_dc_output = "creating {0}_one_1\n" \
                               "shoo shabala\n" \
