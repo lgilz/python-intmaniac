@@ -233,13 +233,16 @@ class Testrun(object):
             output.output.test_failed(type=self.reason,
                                       message=str(self.exception)
                                       if self.exception
-                                      else "Test output following",
-                                      details="No details available")
-        for result in self.test_results:
-            block_name = "COMMAND: {}".format(" ".join(result[0]))
-            output.output.block_open(block_name)
+                                      else None)
+        for num, result in enumerate(self.test_results):
+            output.output.block_open("Test command {}".format(num+1))
+            output.output.message("COMMAND: {}".format(" ".join(result[0])))
+            output.output.block_open("STDOUT")
             output.output.dump(result[2])
+            output.output.block_done()
+            output.output.block_open("STDOUT")
             output.output.dump(result[3])
+            output.output.block_done()
             output.output.block_done()
         output.output.test_done()
 

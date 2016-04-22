@@ -24,11 +24,9 @@ def _run_tests(tests):
     try:
         retval = True
         for test in tests:
-            output.output.block_open("Test " + test.name)
             test.run()
             retval = test.succeeded() and retval
             test.dump()
-            output.output.block_done()
     except Exception as e:
         # this is just to make sure we really kill those darn temp files.
         re_raise_me = e
