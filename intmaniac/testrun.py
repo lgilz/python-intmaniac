@@ -228,9 +228,11 @@ class Testrun(object):
 
     def dump(self):
         output.output.test_open(self.name)
-        output.output.message("Success", status=self.test_state)
-        if not self.succeeded():
+        if self.succeeded():
+            output.output.message("Success", status=self.test_state)
+        else:
             output.output.test_failed(type=self.reason,
+                                      details=self.test_state,
                                       message=str(self.exception)
                                       if self.exception
                                       else None)
@@ -240,7 +242,7 @@ class Testrun(object):
             output.output.block_open("STDOUT")
             output.output.dump(result[2])
             output.output.block_done()
-            output.output.block_open("STDOUT")
+            output.output.block_open("STDERR")
             output.output.dump(result[3])
             output.output.block_done()
             output.output.block_done()
