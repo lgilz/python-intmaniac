@@ -39,7 +39,7 @@ class TestTestrun(unittest.TestCase):
 
     def test_test_name_construction(self):
         tr = Testrun('default', "/hoo/ha", **testrun_configs['default'])
-        self.assertEqual('default-ha', tr.name)
+        self.assertEqual('default', tr.name)
         tr = Testrun(None, "/hoo/ha", **testrun_configs['default'])
         self.assertEqual('ha', tr.name)
 
