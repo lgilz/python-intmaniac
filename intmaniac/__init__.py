@@ -77,11 +77,7 @@ def _parse_args(arguments):
                         default=False)
     config = parser.parse_args(arguments)
     # process arguments
-    config.config_file = realpath(config.config_file)
     config.env = dict([e.split("=", 1) for e in config.env])
-    # check arguments
-    if not isfile(config.config_file):
-        tools.fail("Could not find config file: {}".format(config.config_file))
     return config
 
 

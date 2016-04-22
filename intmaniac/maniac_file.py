@@ -8,7 +8,7 @@ import tempfile
 from functools import partial
 from re import search as research
 from os import write as fdwrite, close as fdclose
-from os.path import dirname, join, isabs
+from os.path import dirname, join, isabs, isfile
 
 
 logger = get_logger(__name__)
@@ -23,10 +23,7 @@ def parse(argconfig):
     :param path_to_file: The path to the configuration file
     :return: A list of Testrun objects (hopefully :)
     """
-    path_to_file = argconfig.config_file
-    with open(path_to_file, "r") as infile:
-        fileconfig = yaml.safe_load(infile)
-
+    fileconfig = _load_config_file(argconfig)
     if 'version' not in fileconfig:
         fail("Need 'config' key in configuration file, must be '2'.")
     else:
@@ -40,6 +37,20 @@ def parse(argconfig):
         else:
             fail("Unknown config file version: '{}'. "
                  "Must be: <absent>, '1' or '2'".format(conf_version))
+
+
+def _load_config_file(argconfig):
+    """
+    Reads the configuration file and returns the deserialized contents.
+    :param argconfig: The argument information from the command line
+    :return: The deserialized YAML config file
+    """
+    path_to_file = argconfig.config_file
+    if not isfile(path_to_file):
+        fail("Could not find config file: {}".format(path_to_file))
+    with open(path_to_file, "r") as infile:
+        fileconfig = yaml.safe_load(infile)
+    return fileconfig
 
 
 #  #########################################################################  #
