@@ -80,3 +80,7 @@ class GenericOutput:
     def dump(*args):
         thing = "".join(args)
         print(thing)
+
+
+def get():
+    return GenericOutput()
