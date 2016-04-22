@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from intmaniac.testrun import Testrun
 from tests.mocksetup import *
 from tests.configsetup import *
 

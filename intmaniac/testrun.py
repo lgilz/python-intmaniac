@@ -24,7 +24,7 @@ def _build_exec_array(base=None):
                if isinstance(item, str) else item for item in tmp]
         return tmp
     else:
-        raise ValueError("Can't construct command array out of this: %s"%
+        raise ValueError("Can't construct command array out of this: %s" %
                          str(base))
 
 

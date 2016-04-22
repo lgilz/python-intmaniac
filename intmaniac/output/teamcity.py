@@ -22,5 +22,6 @@ class TeamcityOutput(GenericOutput):
     str_block_open = "##teamcity[blockOpened name='{name}']"
     str_block_done = "##teamcity[blockClosed name='{name}']"
 
+
 def get():
     return TeamcityOutput()

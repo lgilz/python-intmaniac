@@ -2,14 +2,10 @@
 
 from intmaniac.defaults import *
 
-import os
-import os.path
-import time
 import functools
 import subprocess as sp
 import logging as log
 import sys
-from random import randint
 
 
 python_version = 10 * sys.version_info[0] + sys.version_info[1]
@@ -237,11 +233,6 @@ def run_command_log(logger_error_func,
         if stderr != "":
             err += "\nSTDERR\n{}".format(stderr)
         logger_func(err)
-
-
-def enable_debug():
-    global debug
-    debug = True
 
 
 if __name__ == "__main__":

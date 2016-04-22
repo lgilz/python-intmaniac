@@ -127,8 +127,6 @@ def _parsev3(fileconfig, argconfig):
     # extract some variables for convenience
     compose_templates = fileconfig['compose_templates']
     tests = fileconfig['tests']
-    testers = fileconfig['tester_configs']
-    environments = fileconfig['environments']
     # make docker-compose template paths absolute
     for k, v in compose_templates.items():
         if not isabs(v):
