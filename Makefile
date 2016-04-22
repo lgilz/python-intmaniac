@@ -1,4 +1,11 @@
-all:
+pypi:   clean build upload
+
+all:    clean build
+
+upload:
+	twine upload dist/*
+
+build:
 	rm -rf build/ dist/
 	python setup.py bdist_wheel
 
