@@ -75,6 +75,10 @@ def _parse_args(arguments):
                         help="Ignore warnings",
                         action="store_true",
                         default=False)
+    parser.add_argument("-o", "--output-type",
+                        help="Set output type from ('base', 'teamcity'). "
+                             "Default: 'base'",
+                        default='base')
     config = parser.parse_args(arguments)
     # process arguments
     config.env = dict([e.split("=", 1) for e in config.env])
@@ -90,6 +94,7 @@ def _init_logging(config):
 def _internal_entrypoint(args):
     config = _parse_args(args)
     _init_logging(config)
+    output.init_output(config.output_type)
     tests = maniac_file.parse(config)
     result = _run_tests(tests)
     if not result:

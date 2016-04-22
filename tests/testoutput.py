@@ -1,7 +1,9 @@
+import intmaniac
 from intmaniac import output
 from intmaniac.output.teamcity import TeamcityOutput
 from intmaniac.output.base import GenericOutput
 from tests.mocksetup import *
+from tests.configsetup import *
 
 import unittest
 
@@ -12,8 +14,19 @@ class TestOutput(unittest.TestCase):
         with self.assertRaises(ImportError):
             output.init_output("blah")
 
-    def test_init_output(self):
+    def test_init_output_function(self):
         output.init_output("teamcity")
+        self.assertIsInstance(output.output, TeamcityOutput)
+
+    @unittest.skipUnless(mock_available, "No mocking available")
+    def test_output_initialization(self):
+        with patch('intmaniac.maniac_file.parse') as mock_parse:
+            mock_parse.return_value = []
+            intmaniac._internal_entrypoint([])
+        self.assertIsInstance(output.output, GenericOutput)
+        with patch('intmaniac.maniac_file.parse') as mock_parse:
+            mock_parse.return_value = []
+            intmaniac._internal_entrypoint("-o teamcity".split())
         self.assertIsInstance(output.output, TeamcityOutput)
 
     @unittest.skipUnless(mock_available, "No mocking available")
