@@ -39,6 +39,9 @@ class TestOutput(unittest.TestCase):
         # don't know why.
         with patch.object(TeamcityOutput, 'dump'):
             op = TeamcityOutput()
+            op.message("meh")
+            op.message("meh", "mah")
+            op.message("meh", "mah", "muh")
             op.block_open("block")
             op.test_suite_open("suite")
             op.test_open("test")
@@ -61,6 +64,9 @@ class TestOutput(unittest.TestCase):
         # don't know why.
         with patch.object(GenericOutput, 'dump'):
             op = GenericOutput()
+            op.message("meh")
+            op.message("meh", "mah")
+            op.message("meh", "mah", "muh")
             op.block_open("block")
             op.test_suite_open("suite")
             op.test_open("test")
