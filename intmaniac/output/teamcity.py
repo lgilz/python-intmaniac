@@ -5,25 +5,25 @@ from intmaniac.output.base import GenericOutput
 
 class TeamcityOutput(GenericOutput):
 
-    str_message = "##teamcity[message text='{message}'{status}{details}\n]"
+    str_message = "##teamcity[message text='{message}'{status}{details}]"
     str_message_details = " errorDetails='{details}'"
     str_message_status = " status='{status}'"
 
-    str_test_suite_open = "##teamcity[testSuiteStarted name='{name}']\n"
-    str_test_suite_done = "##teamcity[testSuiteFinished name='{name}']\n"
-    str_test_open = "##teamcity[testStarted name='{name}']\n"
+    str_test_suite_open = "##teamcity[testSuiteStarted name='{name}']"
+    str_test_suite_done = "##teamcity[testSuiteFinished name='{name}']"
+    str_test_open = "##teamcity[testStarted name='{name}']"
 
     str_test_fail = "##teamcity[testFailed name='{name}'" \
-                    "{type}{message}{details}]\n"
+                    "{type}{message}{details}]"
     str_test_fail_type = " type='{type}'"
     str_test_fail_message = " message='{message}'"
     str_test_fail_details = " details='{details}'"
 
-    str_test_stdout = "##teamcity[testStdOut name='{name}' out='{text}']\n"
-    str_test_stderr = "##teamcity[testStdErr name='{name}' out='{text}']\n"
-    str_test_done = "##teamcity[testFinished name='{name}']\n"
-    str_block_open = "##teamcity[blockOpened name='{name}']\n"
-    str_block_done = "##teamcity[blockClosed name='{name}']\n"
+    str_test_stdout = "##teamcity[testStdOut name='{name}' out='{text}']"
+    str_test_stderr = "##teamcity[testStdErr name='{name}' out='{text}']"
+    str_test_done = "##teamcity[testFinished name='{name}']"
+    str_block_open = "##teamcity[blockOpened name='{name}']"
+    str_block_done = "##teamcity[blockClosed name='{name}']"
 
     @staticmethod
     def format_name(name):

@@ -4,8 +4,8 @@ class GenericOutput:
     str_message = "MESSAGE: {message}{status}{details}"
     str_message_details = "\n  - DETAILS: {details})"
     str_message_status = "\n  - STATUS:  {status})"
-    str_test_suite_open = "\n### TEST SUITE: {name}\n"
-    str_test_suite_done = "\n### /TEST SUITE: {name}\n"
+    str_test_suite_open = "\n### TEST SUITE: {name}"
+    str_test_suite_done = "\n### /TEST SUITE: {name}"
     str_test_open = "## TEST: {name}"
     str_test_fail = "TEST FAILURE{type}{message}{details}"
     str_test_fail_type = "\nTYPE:    {type}"
@@ -13,9 +13,9 @@ class GenericOutput:
     str_test_fail_details = "\nDETAILS: {details}"
     str_test_stdout = "TEST STDOUT:\n{text}"
     str_test_stderr = "TEST STDERR:\n{text}"
-    str_test_done = "## /TEST {name}\n"
+    str_test_done = "## /TEST {name}"
     str_block_open = "\n**** BLOCK {name}"
-    str_block_done = "**** /BLOCK {name}\n"
+    str_block_done = "**** /BLOCK {name}"
 
     def __init__(self):
         self.open_tests = []
