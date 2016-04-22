@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+0.12.0
+------
+
+Date: 2016-04-22
+
+- Added ``-o/--output`` command line parameter
+
+
 0.11.3
 ------
 
