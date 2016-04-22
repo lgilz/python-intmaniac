@@ -97,7 +97,7 @@ def _internal_entrypoint(args):
     tests = maniac_file.parse(config)
     result = _run_tests(tests)
     if not result:
-        sys.exit(1)
+        sys.exit(255)
 
 
 # this is for the console invocation by setuptools.
