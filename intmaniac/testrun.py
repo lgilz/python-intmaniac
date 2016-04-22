@@ -230,11 +230,9 @@ class Testrun(object):
 
     def dump(self):
         output.output.test_open(self.name)
-        if self.succeeded():
-            output.output.message("Success", status=self.test_state)
-        else:
+        output.output.message("Test status: {}".format(self.test_state))
+        if not self.succeeded():
             output.output.test_failed(type=self.reason,
-                                      details=self.test_state,
                                       message=str(self.exception)
                                       if self.exception
                                       else None)
