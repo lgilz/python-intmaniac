@@ -1,0 +1,9 @@
+---
+version: 2
+
+compose_template: "docker-compose-intmaniac.yml"
+
+tester_config:
+  image: busybox
+  commands: ping -c 5 pingme
+  links: [pingme]

@@ -2,6 +2,7 @@
 
 from intmaniac.tools import run_command, run_command_log as rcl
 from intmaniac.tools import get_logger, RunCommandError
+from intmaniac.dockhelpers import *
 from intmaniac import output
 
 import os
@@ -61,6 +62,7 @@ class Testrun(object):
         self.exception = None
         self.reason = None
         # run information - this can only be set after the env is running
+        self.cleanup_test_containers = []
         self.run_containers = None
         self.run_command_base = None
         # log setup
@@ -140,12 +142,37 @@ class Testrun(object):
         return rvs
 
     def _run_test_command(self, command):
-        # we need to do this here, cause
-        # construct envs
-        assert isinstance(command, list)
-        runthis = self.run_command_base + command
-        return self._run_command(runthis, throw=True, env=dict(os.environ,
-                                                              **self.test_env))
+        """
+        Create a new test container, run a test command, collect the log output,
+        evaluate the result, and return. Easy.
+        Mimics the behavior of tools.run_command().
+        :param command: The command to execute in the test container
+        :return: same as tools.run_command()
+        :raise: RunCommandError if the execution was not successful
+        """
+        dc = get_client()
+        cid = self._create_test_container_with_command(command)
+        links = [(self._container_for_service(service), service)
+                 for service in self.test_linked_services]
+        dc.start(container=cid, links=links)
+        logs = dc.logs(cid,
+                       stdout=True, stderr=True, stream=True,
+                       follow=True, since=0)
+        log_output = []
+        for log in logs:
+            log_output.append(str(log, encoding="UTF-8"))
+        tmp = dc.inspect_container(cid)
+        returncode = tmp['State']['ExitCode']
+        rv = (command, returncode, "".join(log_output), None)
+        if returncode != 0:
+            ex = RunCommandError(
+                command=command,
+                stdout="\n".join(log_output),
+                returncode=returncode
+            )
+            ex.rv = rv
+            raise ex
+        return rv
 
     def _extract_container_names_from(self, outtext):
         matcher = recomp('({}_(.+)_[0-9]+)'.format(self.sanitized_name))
@@ -161,32 +188,42 @@ class Testrun(object):
             ["{}->{}".format(k[0], k[1]) for k in self.run_containers]
         )))
 
+    def _create_test_container_with_command(self, command=None):
+        """
+        Creates a new test container instance with the command given. Must be
+        called for each command, because we can't change the command once
+        it's set.
+        :param command: The command to execute with the container
+        :return: The container id string
+        """
+        dc = get_client()
+        # the container is removed in self._cleanup()
+        tmp = dc.create_container(self.test_image,
+                                  environment=self.test_env,
+                                  command=command)
+        test_container_id = tmp['Id']
+        self.cleanup_test_containers.append(test_container_id)
+        return test_container_id
+
     def _setup_test_env(self):
+        dc = get_client()
         if self.meta.get('pull', None):
             self._run_docker_compose("pull --ignore-pull-failures".split(),
                                      throw=True)
-            self._run_command("docker pull {}".format(self.test_image).split(),
-                              throw=True)
+            dc.pull(self.test_image)
         rv = self._run_docker_compose("up -d", throw=True)
+        # TODO - use docker api to extract container names
         # first, set up "container_name -> service_name" tuples
         outtext = rv[3]  # docker-compose outputs to stderr
+        # TODO - replace self._container_for_service
         self._extract_container_names_from(rv[3])
-        # second, set up docker run base command
-        runthis = "docker run --rm".split()
-        for k, v in self.test_env.items():
-            runthis += ["-e", "{}={}".format(k, v)]
-        # construct link params
-        for service in self.test_linked_services:
-            runthis += ["--link",
-                        "{}:{}".format(self._container_for_service(service),
-                                       service)
-                        ]
-        runthis.append(self.test_image)
-        self.run_command_base = runthis
 
     def _cleanup(self):
+        dc = get_client()
         self._run_docker_compose("stop")
         self._run_docker_compose("rm -f")
+        for test_container_id in self.cleanup_test_containers:
+            dc.remove_container(test_container_id)
 
     def _get_container_logs(self):
         pass
