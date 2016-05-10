@@ -208,8 +208,10 @@ def run_command(command, *args, throw=False, expect_returncode=0, **kwargs):
     stdout_str, stderr_str = destr(stdout), destr(stderr)
     rv = (command, p.returncode, stdout_str, stderr_str)
     if throw and rv[1] != expect_returncode:
-        raise RunCommandError(command=command, returncode=p.returncode,
+        ex = RunCommandError(command=command, returncode=p.returncode,
                               stdout=stdout_str, stderr=stderr_str)
+        ex.rv = rv
+        raise ex
     return rv
 
 
