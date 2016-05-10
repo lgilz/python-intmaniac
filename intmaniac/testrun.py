@@ -163,7 +163,8 @@ class Testrun(object):
 
     def _setup_test_env(self):
         if self.meta.get('pull', None):
-            self._run_docker_compose("pull".split(), throw=True)
+            self._run_docker_compose("pull --ignore-pull-failures".split(),
+                                     throw=True)
             self._run_command("docker pull {}".format(self.test_image).split(),
                               throw=True)
         rv = self._run_docker_compose("up -d", throw=True)
