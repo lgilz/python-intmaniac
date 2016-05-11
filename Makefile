@@ -1,6 +1,6 @@
-pypi:   clean build upload
-
 all:    clean build
+
+pypi:   clean build upload
 
 upload:
 	twine upload dist/*
