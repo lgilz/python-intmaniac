@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+0.13.0
+------
+
+Date: 2016-05-12
+
+- Added replacement of ``%%ENV_VAR%%`` tags in the intmaniac file itself. Only global settings (e.g. from the command line) are used, of course.
+
+
 0.12.0
 ------
 
