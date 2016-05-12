@@ -3,6 +3,8 @@ from intmaniac.testrun import Testrun
 from intmaniac.tools import fail, deep_merge, get_logger
 
 import yaml
+from yaml.parser import ParserError
+from yaml.scanner import ScannerError
 
 import tempfile
 from functools import partial
@@ -42,6 +44,8 @@ def parse(argconfig):
 def _load_config_file(argconfig):
     """
     Reads the configuration file and returns the deserialized contents.
+    Also performs a search-and-replace on the contents with the global
+    environment settings from the command line.
     :param argconfig: The argument information from the command line
     :return: The deserialized YAML config file
     """
@@ -49,7 +53,15 @@ def _load_config_file(argconfig):
     if not isfile(path_to_file):
         fail("Could not find config file: {}".format(path_to_file))
     with open(path_to_file, "r") as infile:
-        fileconfig = yaml.safe_load(infile)
+        tmp_data = infile.read()
+        for k, v in argconfig.env.items():
+            tmp_data = tmp_data.replace("%%{}%%".format(k.upper()), v)
+        if not argconfig.force:
+            _check_and_fail_with_replacement_tags(tmp_data, "intmaniac file")
+        try:
+            fileconfig = yaml.safe_load(tmp_data)
+        except (ParserError, ScannerError) as e:
+            fail("Invalid YAML in configuration file: " + str(e))
     return fileconfig
 
 
@@ -284,15 +296,24 @@ def _prepare_docker_compose_template(compose_file, search_and_replace_dict, gc):
     for k, v in search_and_replace_dict.items():
         data = data.replace("%%{}%%".format(k.upper()), v)
     if not gc.force:
-        result = research("(%%[A-Z0-9_-]+%%)", data)
-        if result:
-            fail("found replacement tags in compose file "
-                 "(missing env setting?): {}\n"
-                 "Ignore with -f setting"
-                 .format(", ".join(map(lambda x: "'{}'".format(x),
-                                      result.groups()))))
+        _check_and_fail_with_replacement_tags(data, "docker-compose file")
     handle, tmpfile = tempfile.mkstemp()
     fdwrite(handle, data.encode('utf-8'))
     fdclose(handle)
     logger.debug("Created temp compose file {}".format(tmpfile))
     return tmpfile
+
+
+def _check_and_fail_with_replacement_tags(data, message):
+    """Searches a string for replacement tags and aborts if found. Should
+    prevent running the program with an insufficient environment
+    :param data: The string to search
+    :param message: A message prepended to the failure message
+    """
+    result = research("(%%[A-Z0-9_-]+%%)", data)
+    if result:
+        fail(message + ": Found unresolved replacement tags "
+             "(missing env setting?): {}\n"
+             "Ignore with -f setting"
+             .format(", ".join(map(lambda x: "'{}'".format(x),
+                                   result.groups()))))

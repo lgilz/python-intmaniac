@@ -14,8 +14,50 @@ testrun_configs = {
     }
 }
 
-v3_config_minimal = yaml.safe_load("""
+v2_config_minimal_rep_str = """
 ---
+version: 2
+compose_template: /template0
+
+tester_config:
+  image: %%MY_IMAGE%%
+  links: ["cvs:cvs"]
+  environment:
+    foo: bar
+"""
+
+v2_config_minimal_str = """
+---
+version: 2
+compose_template: /template0
+
+tester_config:
+  image: my/image
+  links: ["cvs:cvs"]
+  environment:
+    foo: bar
+"""
+v2_config_minimal = yaml.safe_load(v2_config_minimal_str)
+
+v3_config_rep_str = """
+---
+version: 3
+compose_templates: {template0: /template0}
+
+tester_configs:
+  tester_def0:
+    image: %%MY_IMAGE%%
+    links: ["cvs:cvs"]
+
+tests:
+  test0:
+    compose_template: template0
+    tester_config: tester_def0
+"""
+
+v3_config_minimal_str = """
+---
+version: 3
 compose_templates: {template0: /template0}
 
 tester_configs:
@@ -27,7 +69,8 @@ tests:
   test0:
     compose_template: template0
     tester_config: tester_def0
-""")
+"""
+v3_config_minimal = yaml.safe_load(v3_config_minimal_str)
 
 v3_config_0 = yaml.safe_load("""
 ---
