@@ -5,13 +5,18 @@ from pip.req import parse_requirements
 from pip.download import PipSession
 
 import io
+from re import match
 
 
 VERSION = "0.13.0"
 
 
+def use_line(line_thing):
+    return not bool(match('^ *(#.*)?$', str(line_thing)))
+
+
 install_reqs = parse_requirements("./requirements.txt", session=PipSession())
-reqs = [str(ir.req) for ir in install_reqs]
+reqs = [str(ir.req) for ir in install_reqs if use_line(ir)]
 
 long_description = (
     io.open('README.rst', encoding='utf-8').read() +
