@@ -1,5 +1,5 @@
 docker-py
 docker-compose
 pyyaml
-pytest
-requests
+# unfortunately, for docker, we need this version
+requests==2.7.0
