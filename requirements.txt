@@ -2,3 +2,4 @@ docker-py
 docker-compose
 pyyaml
 pytest
+requests
