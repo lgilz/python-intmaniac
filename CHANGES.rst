@@ -1,6 +1,15 @@
 CHANGELOG
 =========
 
+0.14.0
+------
+
+Date: 2016-05-23
+
+- Using docker python libraries internally now. The container now only needs ``/var/run/docker.sock`` mounted
+- More optimizations still needed, but a lot more robust now. I hope.
+
+
 0.13.0
 ------
 
