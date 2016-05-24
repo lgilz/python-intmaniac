@@ -6,7 +6,7 @@ from intmaniac.dockhelpers import *
 
 import os
 from os.path import basename
-from re import sub as resub, search as research, compile as recomp
+from re import sub as resub, compile as recomp
 
 
 def _build_exec_array(base=None):
