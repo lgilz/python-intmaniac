@@ -202,9 +202,14 @@ class Testrun(object):
         try:
             self._setup_test_env()
             self._run_local_commands(self.meta.get('pre', None))
-            for test_command in self.test_commands:
-                rv = self._run_test_command(test_command)
-                self.test_results.append(rv)
+            # now, if NO test commands are set, we need a dummy None command
+            if len(self.test_commands) > 0:
+                for test_command in self.test_commands:
+                    rv = self._run_test_command(test_command)
+                    self.test_results.append(rv)
+            else:
+                # no explicit command given
+                self.test_results.append(self._run_test_command())
             self._run_local_commands(self.meta.get('post', None))
             self._run_docker_compose("stop".split(" "))
             self._run_docker_compose("rm -f".split(" "))
