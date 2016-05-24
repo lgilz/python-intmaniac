@@ -1,6 +1,15 @@
 CHANGELOG
 =========
 
+0.15.0
+------
+
+Date: 2016-05-24
+
+- Added ``--no-format-output`` parameter which disables any output formatting. The output from the tester image is passed through without modifications.
+- Mid-size internal refactoring, using docker-compose wrapper class now
+
+
 0.14.0
 ------
 
