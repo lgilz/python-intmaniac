@@ -199,7 +199,7 @@ class Testrun(object):
             self.test_results.append(e.rv)
         except OSError as e:
             success = False
-            self.reason = "Exception while exeucting command: {}".format(str(e))
+            self.reason = "Exception while executing command: {}".format(str(e))
             self.log.error("Exception on command execution: {}".format(str(e)))
             self.test_results.append(e)
         finally:
