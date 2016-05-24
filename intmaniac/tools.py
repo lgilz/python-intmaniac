@@ -198,7 +198,7 @@ class RunCommandError(Exception):
         self.rv = (command, returncode, stdout, stderr)
 
 
-def run_command(command, *args, throw=False, expect_returncode=0, **kwargs):
+def run_command(command, throw=False, expect_returncode=0, **kwargs):
     """
     Executes a command without using popen and returns a tuple with resulting
     information. OSError exceptions are not catched or filtered.
@@ -210,7 +210,7 @@ def run_command(command, *args, throw=False, expect_returncode=0, **kwargs):
     :returns A tuple containing (command, returncode, stdout, stderr).
     """
     logger = get_logger(__name__+".run_command")
-    p = sp.Popen(command, *args, stdout=sp.PIPE, stderr=sp.PIPE, **kwargs)
+    p = sp.Popen(command, stdout=sp.PIPE, stderr=sp.PIPE, **kwargs)
     stdout, stderr = p.communicate()
     stdout_str, stderr_str = destr(stdout), destr(stderr)
     rv = (command, p.returncode, stdout_str, stderr_str)

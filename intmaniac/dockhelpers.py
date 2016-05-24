@@ -62,47 +62,47 @@ class Compose(object):
         self.run_args = tuple(run_args)
         self.run_kwargs = run_kwargs
 
-    def run(self, run_args, *args, **kwargs):
+    def run(self, run_args, **kwargs):
         use_command = run_args \
             if isinstance(run_args, list) \
             else run_args.split(" ")
         full_command = self.base_command + use_command
         # call(*a1, *a2) seems only to work on python 3.5+
-        return tools.run_command(full_command, *(args + self.run_args),
+        return tools.run_command(full_command,
                                  **tools.deep_merge(self.run_kwargs, kwargs))
 
-    def up(self, detach=True, *args, **kwargs):
+    def up(self, detach=True, **kwargs):
         run_args = ["up"]
         if detach:
             run_args.append("-d")
-        rv = self.run(run_args, *args, **kwargs)
+        rv = self.run(run_args, **kwargs)
         # TODO - use docker api to extract container names
         # first, set up "container_name -> service_name" tuples
         return self._extract_container_names_from(rv[3])
 
-    def stop(self, *args, **kwargs):
+    def stop(self, **kwargs):
         run_args = ["stop"]
-        return self.run(run_args, *args, **kwargs)
+        return self.run(run_args, **kwargs)
 
-    def kill(self, signal=None, *args, **kwargs):
+    def kill(self, signal=None, **kwargs):
         run_args = ["kill"]
         if signal:
             run_args += ["-s", signal]
-        return self.run(run_args, *args, **kwargs)
+        return self.run(run_args, **kwargs)
 
-    def rm(self, force=True, all=False, *args, **kwargs):
+    def rm(self, force=True, all=False, **kwargs):
         run_args = ["rm"]
         if force:
             run_args.append("-f")
         if all:
             run_args.append("--all")
-        return self.run(run_args, *args, **kwargs)
+        return self.run(run_args, **kwargs)
 
-    def pull(self, ignorefailures=True, *args, **kwargs):
+    def pull(self, ignorefailures=True, **kwargs):
         run_args = ["pull"]
         if ignorefailures:
             run_args.append("--ignore-pull-failures")
-        return self.run(run_args, *args, **kwargs)
+        return self.run(run_args, **kwargs)
 
     def _extract_container_names_from(self, outtext):
         use_prj_name = self.project_name \
