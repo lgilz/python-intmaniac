@@ -19,7 +19,7 @@ def get_client(base_url=None):
     if not base_url:
         base_url = 'unix:///var/run/docker.sock'
     if base_url not in clients:
-        clients[base_url] = Client(base_url=base_url)
+        clients[base_url] = Client(base_url=base_url, version='auto')
     return clients[base_url]
 
 
