@@ -11,6 +11,8 @@ import sys
 python_version = 10 * sys.version_info[0] + sys.version_info[1]
 debug = False
 
+loggercache = {}
+
 
 ##############################################################################
 #                                                                            #
@@ -54,6 +56,9 @@ def init_logging(config):
 
 
 def get_logger(name, level=-1, filename=None):
+    global loggercache
+    if name in loggercache:
+        return loggercache[name]
     # create new logger
     logger = log.getLogger(name)
     # process all messages
@@ -73,6 +78,7 @@ def get_logger(name, level=-1, filename=None):
         handler.setFormatter(formatter)
         handler.setLevel(0)
         logger.addHandler(handler)
+    loggercache[name] = logger
     return logger
 
 
