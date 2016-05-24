@@ -1,12 +1,21 @@
 CHANGELOG
 =========
 
+0.16.0
+------
+
+Date: 2016-05-24
+
+- Fixed API version conflict (hopefully)
+- Changed default behavior: Pulling images now default, has to be explicitly disabled if unwanted.
+
+
 0.15.1, 0.15.2
 --------------
 
 Date: 2016-05-24
 
-- Sytax fixes for Python <3.5
+- Syntax fixes for Python <3.5
 
 
 0.15.0
