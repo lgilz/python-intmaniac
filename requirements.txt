@@ -1,5 +1,5 @@
-docker-py
-docker-compose
+#docker-py
+docker-compose==1.5.2
 pyyaml
 # unfortunately, for docker, we need this version
 requests==2.7.0
