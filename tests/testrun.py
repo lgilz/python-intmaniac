@@ -1,42 +1,60 @@
 #!/usr/bin/env python
 
 from tests.mocksetup import *
-from tests.configsetup import *
+from tests.configsetup import get_test_tr
 
 import unittest
 
 
 class TestTestrun(unittest.TestCase):
 
-    def setUp(self):
-        self.testrun = Testrun('default', "/hoo/ha", **testrun_configs['default'])
-
-    @unittest.skipUnless(mock_available,
-                         "No mocking available in this Python version")
-    @patch('intmaniac.testrun.run_command')
-    def test_environment_setup(self, rc):
-        wanted_test_base = 'intmaniacdefaultha'
-        wanted_service_tuples = [('{}_one_1'.format(wanted_test_base), 'one'),
-                                 ('{}_two_1'.format(wanted_test_base), 'two'),
-                                 ('{}_thr_1'.format(wanted_test_base), 'thr'),
-                                 ('{}_for_1'.format(wanted_test_base), 'for')]
-        simulated_dc_output = "creating {0}_one_1\n" \
-                              "shoo shabala\n" \
-                              "creating {0}_two_1\n"\
-                              "creating {0}_thr_1...\n"\
-                              "creating {0}_for_1 ...\n"\
-                              .format(wanted_test_base)
-        rc.return_value = ("docker-compose", 0, None, simulated_dc_output)
-        tr = self.testrun
-        # now test
-        tr._setup_test_env()
-        self.assertEqual(wanted_service_tuples, tr.run_containers)
-
     def test_test_name_construction(self):
-        tr = Testrun('default', "/hoo/ha", **testrun_configs['default'])
-        self.assertEqual('default', tr.name)
-        tr = Testrun(None, "/hoo/ha", **testrun_configs['default'])
-        self.assertEqual('ha', tr.name)
+        tr_obj = get_test_tr('default')
+        self.assertEqual('default', tr_obj.name)
+        tr_obj = get_test_tr('default', name=None)
+        self.assertEqual('ha', tr_obj.name)
+
+    @unittest.skipUnless(mock_available, "No mocking available")
+    def test_testcommand_execution(self):
+        tr_obj = get_test_tr('nocommands')
+        tmp0 = MagicMock()
+        tmp1 = ("sim_command", 0, "out", "err")
+        tr_obj.compose_wrapper = tmp0
+        tmp0.up.return_value = [("asdf_two_1", "two"), ]
+        tmp0.kill.return_value = tmp1
+        tmp0.stop.return_value = tmp1
+        tmp0.rm.return_value = tmp1
+        with patch('configsetup.tr.run_command') as mock_rc, \
+            patch('configsetup.tr.create_container') as mock_cc, \
+            patch('configsetup.tr.get_client') as mock_gc:
+            # what will happen is:
+            #    dc = get_client() called
+            #    create_container() called, should return an ID string
+            #    dc.start(...), dc.logs(...) called, return value not so
+            #        important
+            #    dc.inspect_container called, should return dict with
+            #        rv['State']['ExitCode'] present
+            # done.
+            mock_cc.return_value = '0815'
+            mock_rc.side_effect = [
+                ("sleep 10", 0, ":)", "None"),
+            ]
+            mock_gc.return_value.inspect_container.return_value = {
+                'State': {'ExitCode': 0}
+            }
+            tr_obj.run()
+            self.assertTrue(tr_obj.succeeded())
+            # check execution counts
+            self.assertEqual(1, mock_rc.call_count)    # for 'sleep 10'
+            self.assertEqual(1, mock_cc.call_count)    # for the one test run
+            self.assertEqual(2, mock_gc.call_count)    # one test run & cleanup
+            # check the execution content
+            self.assertEqual(['sleep', '10'], mock_rc.call_args[0][0])
+            self.assertEqual(call('my/testimage:latest',
+                                  command=[],
+                                  environment={'TARGET_URL': 'rsas'}),
+                             mock_cc.call_args)
+
 
 
 if __name__ == "__main__":

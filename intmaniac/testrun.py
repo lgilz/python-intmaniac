@@ -6,7 +6,7 @@ from intmaniac.dockhelpers import *
 
 import os
 from os.path import basename
-from re import sub as resub, compile as recomp
+from re import sub as resub
 
 
 def _build_exec_array(base=None):
@@ -48,6 +48,8 @@ class Testrun(object):
                   self.name.lower() + basename(compose_file).lower())
         )
         self.template = compose_file
+        self.compose_wrapper = Compose(compose_file, self.sanitized_name,
+                                       run_kwargs={'throw': True})
         # extract "top level" parameters
         self.test_env = kwargs.pop('environment', {})
         self.test_image = kwargs.pop('image')
@@ -85,17 +87,6 @@ class Testrun(object):
         eq = eq and self.test_linked_services == other.test_linked_services
         return eq
 
-    def _run_docker_compose(self, command, *args, **kwargs):
-        base_command = "docker-compose -f {} -p {}".format(
-            self.template, self.sanitized_name
-        ).split()
-        use_command = command \
-            if isinstance(command, list) \
-            else command.split(" ")
-        full_command = base_command + use_command
-        rv = run_command(full_command, *args, **kwargs)
-        return rv
-
     def _container_for_service(self, service_name):
         try:
             return next(filter(lambda x: x[1] == service_name,
@@ -123,22 +114,27 @@ class Testrun(object):
                                             **self.test_env)))
         return rvs
 
-    def _run_test_command(self, command=None):
+    def _run_test_command(self, command=[]):
         """
         Create a new test container, run a test command, collect the log output,
         evaluate the result, and return. Easy.
         Mimics the behavior of tools.run_command().
-        :param command: The command to execute in the test container
+        :param command: The command to execute in the test container as list
         :return: same as tools.run_command()
         :raise: RunCommandError if the execution was not successful
         """
         dc = get_client()
+        command_log = ["docker({})".format(self.test_image)]
+        if len(command) > 0:
+            command_log += command
+        else:
+            command_log.append("(default)")
         cid = create_container(self.test_image,
                                command=command, environment=self.test_env)
         self.cleanup_test_containers.append(cid)
-        links = [(self._container_for_service(service), service)
-                 for service in self.test_linked_services]
-        dc.start(container=cid, links=links)
+        dc.start(container=cid,
+                 links=[(self._container_for_service(service), service)
+                        for service in self.test_linked_services])
         logs = dc.logs(cid,
                        stdout=True, stderr=True, stream=True,
                        follow=True, since=0)
@@ -147,7 +143,7 @@ class Testrun(object):
             log_output.append(str(log, encoding="UTF-8"))
         tmp = dc.inspect_container(cid)
         returncode = tmp['State']['ExitCode']
-        rv = (command, returncode, "".join(log_output), None)
+        rv = (command_log, returncode, "".join(log_output), None)
         if returncode != 0:
             ex = RunCommandError(
                 command=command,
@@ -158,39 +154,19 @@ class Testrun(object):
             raise ex
         return rv
 
-    def _extract_container_names_from(self, outtext):
-        matcher = recomp('({}_(.+)_[0-9]+)'.format(self.sanitized_name))
-        lines = list(map(lambda x: x.strip(), outtext.split("\n")))
-        lines = list(filter(lambda x: matcher.search(x) is not None, lines))
-        run_containers = []
-        for line in lines:
-            match = matcher.search(line)
-            run_containers.append((match.groups()[0], match.groups()[1]))
-        self.run_containers = run_containers
-        self.log.warning("FOUND TEST CONTAINERS: {}"
-            .format(", ".join(
-            ["{}->{}".format(k[0], k[1]) for k in self.run_containers]
-        )))
-
     def _setup_test_env(self):
-        dc = get_client()
         if self.meta.get('pull', None):
-            self._run_docker_compose("pull --ignore-pull-failures".split(),
-                                     throw=True)
-            dc.pull(self.test_image)
-        rv = self._run_docker_compose("up -d", throw=True)
-        # TODO - use docker api to extract container names
-        # first, set up "container_name -> service_name" tuples
-        outtext = rv[3]  # docker-compose outputs to stderr
-        # TODO - replace self._container_for_service
-        self._extract_container_names_from(rv[3])
+            self.compose_wrapper.pull(ignorefailures=True)
+            # will not fail if the image is not pullable! :)
+            get_client().pull(self.test_image)
+        self.run_containers = self.compose_wrapper.up()
 
     def _cleanup(self):
         dc = get_client()
-        self._run_docker_compose("stop")
+        self.compose_wrapper.kill()
         # this sucks. for older docker-compose versions, we need --all,
         # newer ones break with it.
-        self._run_docker_compose("rm -f")
+        self.compose_wrapper.rm()
         for test_container_id in self.cleanup_test_containers:
             dc.remove_container(test_container_id)
 
@@ -202,7 +178,6 @@ class Testrun(object):
         try:
             self._setup_test_env()
             self._run_local_commands(self.meta.get('pre', None))
-            # now, if NO test commands are set, we need a dummy None command
             if len(self.test_commands) > 0:
                 for test_command in self.test_commands:
                     rv = self._run_test_command(test_command)
@@ -211,8 +186,8 @@ class Testrun(object):
                 # no explicit command given
                 self.test_results.append(self._run_test_command())
             self._run_local_commands(self.meta.get('post', None))
-            self._run_docker_compose("stop".split(" "))
-            self._run_docker_compose("rm -f".split(" "))
+            self.compose_wrapper.stop()
+            self.compose_wrapper.rm()
         except KeyError as e:
             # raised by _container_for_service() if service cannot be found
             success = False
