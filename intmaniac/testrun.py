@@ -220,7 +220,7 @@ class Testrun(object):
     def _cleanup(self):
         dc = get_client()
         self._run_docker_compose("stop")
-        self._run_docker_compose("rm -f")
+        self._run_docker_compose("rm --all -f")
         for test_container_id in self.cleanup_test_containers:
             dc.remove_container(test_container_id)
 
