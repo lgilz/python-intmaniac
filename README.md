@@ -69,8 +69,8 @@ tester_config:
   # optional. true / false. default is false.
   allow_failure: false  # allow test to fail
 
-  # optional, boolean, default is false.
-  pull: false           # pull containers before running
+  # optional, boolean, default is true.
+  pull: true            # pull containers before running
 ```
 
 Use version 3 for a matrix test (multiple environments, set-ups, tests, etc.). The (non-working) example below will create two tests. Basically every possible combination is created for each test and then run.

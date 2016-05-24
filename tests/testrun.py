@@ -47,7 +47,8 @@ class TestTestrun(unittest.TestCase):
             # check execution counts
             self.assertEqual(1, mock_rc.call_count)    # for 'sleep 10'
             self.assertEqual(1, mock_cc.call_count)    # for the one test run
-            self.assertEqual(2, mock_gc.call_count)    # one test run & cleanup
+            self.assertEqual(3, mock_gc.call_count)    # pull, test run, cleanup
+            self.assertEqual(1, mock_gc.return_value.pull.call_count)
             # check the execution content
             self.assertEqual(['sleep', '10'], mock_rc.call_args[0][0])
             self.assertEqual(call('my/testimage:latest',

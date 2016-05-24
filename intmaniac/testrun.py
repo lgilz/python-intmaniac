@@ -155,7 +155,8 @@ class Testrun(object):
         return rv
 
     def _setup_test_env(self):
-        if self.meta.get('pull', None):
+        # make pulling standard.
+        if self.meta.get('pull', True):
             self.compose_wrapper.pull(ignorefailures=True)
             # will not fail if the image is not pullable! :)
             get_client().pull(self.test_image)
