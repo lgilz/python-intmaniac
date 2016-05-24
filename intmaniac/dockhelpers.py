@@ -59,7 +59,7 @@ class Compose(object):
         ).split()
         self.project_name = project_name
         self.template = template
-        self.run_args = run_args
+        self.run_args = tuple(run_args)
         self.run_kwargs = run_kwargs
 
     def run(self, run_args, *args, **kwargs):
@@ -67,8 +67,9 @@ class Compose(object):
             if isinstance(run_args, list) \
             else run_args.split(" ")
         full_command = self.base_command + use_command
-        return tools.run_command(full_command, *args, *self.run_args,
-                                 **kwargs, **self.run_kwargs)
+        # call(*a1, *a2) seems only to work on python 3.5+
+        return tools.run_command(full_command, *(args + self.run_args),
+                                 **tools.deep_merge(self.run_kwargs, kwargs))
 
     def up(self, detach=True, *args, **kwargs):
         run_args = ["up"]
