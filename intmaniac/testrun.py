@@ -3,7 +3,6 @@
 from intmaniac.tools import run_command, run_command_log as rcl
 from intmaniac.tools import get_logger, RunCommandError
 from intmaniac.dockhelpers import *
-from intmaniac import output
 
 import os
 from os.path import basename
@@ -265,28 +264,6 @@ class Testrun(object):
 
     def succeeded(self):
         return self.test_state in (self.SUCCEEDED, self.CONTROLLED_FAILURE)
-
-    def dump(self):
-        output.output.test_open(self.name)
-        output.output.message("Test status: {}".format(self.test_state))
-        if not self.succeeded():
-            output.output.test_failed(type=self.reason,
-                                      message=str(self.exception)
-                                      if self.exception
-                                      else None)
-        for num, result in enumerate(self.test_results):
-            output.output.block_open("Test command {}".format(num+1))
-            output.output.message("COMMAND: {}".format(" ".join(result[0])))
-            if result[2]:
-                output.output.block_open("STDOUT")
-                output.output.dump(result[2])
-                output.output.block_done()
-            if result[3]:
-                output.output.block_open("STDERR")
-                output.output.dump(result[3])
-                output.output.block_done()
-            output.output.block_done()
-        output.output.test_done()
 
 
 if __name__ == "__main__":
