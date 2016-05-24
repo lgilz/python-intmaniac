@@ -1,12 +1,12 @@
 CHANGELOG
 =========
 
-0.15.1
-------
+0.15.1, 0.15.2
+--------------
 
 Date: 2016-05-24
 
-- Sytax fix for Python <3.5
+- Sytax fixes for Python <3.5
 
 
 0.15.0

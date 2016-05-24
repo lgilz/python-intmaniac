@@ -8,7 +8,7 @@ import io
 from re import match
 
 
-VERSION = "0.15.1"
+VERSION = "0.15.2"
 
 
 def use_line(line_thing):
