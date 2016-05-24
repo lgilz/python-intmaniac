@@ -209,10 +209,12 @@ def run_command(command, *args, throw=False, expect_returncode=0, **kwargs):
     for successful execution (in case of throw == True)
     :returns A tuple containing (command, returncode, stdout, stderr).
     """
+    logger = get_logger(__name__+".run_command")
     p = sp.Popen(command, *args, stdout=sp.PIPE, stderr=sp.PIPE, **kwargs)
     stdout, stderr = p.communicate()
     stdout_str, stderr_str = destr(stdout), destr(stderr)
     rv = (command, p.returncode, stdout_str, stderr_str)
+    _run_command_log(logger.error, logger.debug, rv)
     if throw and rv[1] != expect_returncode:
         ex = RunCommandError(command=command, returncode=p.returncode,
                               stdout=stdout_str, stderr=stderr_str)
@@ -221,9 +223,9 @@ def run_command(command, *args, throw=False, expect_returncode=0, **kwargs):
     return rv
 
 
-def run_command_log(logger_error_func,
-                    logger_normal_func,
-                    rv, text=None, expected_returncode=0):
+def _run_command_log(logger_error_func,
+                     logger_normal_func,
+                     rv, text=None, expected_returncode=0):
     logger_func = None
     state = text if text else "RUN COMMAND"
     if rv[1] != expected_returncode and logger_error_func is not None:

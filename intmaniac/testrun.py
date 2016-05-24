@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from intmaniac.tools import run_command, run_command_log as rcl
+from intmaniac.tools import run_command
 from intmaniac.tools import get_logger, RunCommandError
 from intmaniac.dockhelpers import *
 
@@ -63,7 +63,6 @@ class Testrun(object):
         # run information - this can only be set after the env is running
         self.cleanup_test_containers = []
         self.run_containers = None
-        self.run_command_base = None
         # log setup
         self.log = get_logger("t-%s" % self.name)
         # some debug output
@@ -94,7 +93,7 @@ class Testrun(object):
             if isinstance(command, list) \
             else command.split(" ")
         full_command = base_command + use_command
-        rv = self._run_command(full_command, *args, **kwargs)
+        rv = run_command(full_command, *args, **kwargs)
         return rv
 
     def _container_for_service(self, service_name):
@@ -107,22 +106,6 @@ class Testrun(object):
                           .format(service_name))
             raise ex
 
-    def _run_command(self, *args, **kwargs):
-        """
-        Convenience wrapper to actually always log command executions, even if
-        they throw an error. Not really cool, but this way it's out of my mind.
-        :param args: Arguments for run_command
-        :param kwargs: Keyword arguments for run_command
-        :return: The return tuple from run_command
-        """
-        try:
-            rv = run_command(*args, **kwargs)
-            rcl(self.log.error, self.log.debug, rv)
-        except RunCommandError as e:
-            rcl(self.log.error, self.log.debug, e.rv)
-            raise e
-        return rv
-
     def _run_local_commands(self, commands):
         """
         Executes a list of commands on the local machine (pre- and post-
@@ -134,13 +117,13 @@ class Testrun(object):
             return
         rvs = []
         for command in _build_exec_array(commands):
-            rvs.append(self._run_command(command,
-                                         throw=True,
-                                         env=dict(os.environ,
-                                                  **self.test_env)))
+            rvs.append(run_command(command,
+                                   throw=True,
+                                   env=dict(os.environ,
+                                            **self.test_env)))
         return rvs
 
-    def _run_test_command(self, command):
+    def _run_test_command(self, command=None):
         """
         Create a new test container, run a test command, collect the log output,
         evaluate the result, and return. Easy.
@@ -150,7 +133,9 @@ class Testrun(object):
         :raise: RunCommandError if the execution was not successful
         """
         dc = get_client()
-        cid = self._create_test_container_with_command(command)
+        cid = create_container(self.test_image,
+                               command=command, environment=self.test_env)
+        self.cleanup_test_containers.append(cid)
         links = [(self._container_for_service(service), service)
                  for service in self.test_linked_services]
         dc.start(container=cid, links=links)
@@ -186,23 +171,6 @@ class Testrun(object):
             .format(", ".join(
             ["{}->{}".format(k[0], k[1]) for k in self.run_containers]
         )))
-
-    def _create_test_container_with_command(self, command=None):
-        """
-        Creates a new test container instance with the command given. Must be
-        called for each command, because we can't change the command once
-        it's set.
-        :param command: The command to execute with the container
-        :return: The container id string
-        """
-        dc = get_client()
-        # the container is removed in self._cleanup()
-        tmp = dc.create_container(self.test_image,
-                                  environment=self.test_env,
-                                  command=command)
-        test_container_id = tmp['Id']
-        self.cleanup_test_containers.append(test_container_id)
-        return test_container_id
 
     def _setup_test_env(self):
         dc = get_client()

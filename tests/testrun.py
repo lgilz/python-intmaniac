@@ -20,10 +20,6 @@ class TestTestrun(unittest.TestCase):
                                  ('{}_two_1'.format(wanted_test_base), 'two'),
                                  ('{}_thr_1'.format(wanted_test_base), 'thr'),
                                  ('{}_for_1'.format(wanted_test_base), 'for')]
-        wanted_command_base = ['docker', 'run', '--rm',
-                               '-e', 'TARGET_URL=rsas',
-                               '--link', 'intmaniacdefaultha_two_1:two',
-                               'my/testimage:latest']
         simulated_dc_output = "creating {0}_one_1\n" \
                               "shoo shabala\n" \
                               "creating {0}_two_1\n"\
@@ -35,7 +31,6 @@ class TestTestrun(unittest.TestCase):
         # now test
         tr._setup_test_env()
         self.assertEqual(wanted_service_tuples, tr.run_containers)
-        self.assertEqual(wanted_command_base, tr.run_command_base)
 
     def test_test_name_construction(self):
         tr = Testrun('default', "/hoo/ha", **testrun_configs['default'])
