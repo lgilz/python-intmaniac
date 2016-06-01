@@ -13,7 +13,8 @@ class GenericOutput:
     str_test_fail_details = "\nDETAILS: {details}"
     str_test_stdout = "TEST STDOUT:\n{text}"
     str_test_stderr = "TEST STDERR:\n{text}"
-    str_test_done = "## /TEST {name}"
+    str_test_done = "## /TEST {name}{duration}"
+    str_test_done_duration = " (duration: {duration}s)"
     str_block_open = "\n**** BLOCK {name}"
     str_block_done = "**** /BLOCK {name}"
 
@@ -99,8 +100,16 @@ class GenericOutput:
                                             message=message,
                                             details=details))
 
-    def test_done(self):
-        self.dump(self.str_test_done.format(name=self.open_tests.pop()))
+    def test_done(self, duration=None):
+        """
+        Close a test block
+        :param duration: Test duration in seconds as float. Only used in
+        TeamCity output currently.
+        :return: None
+        """
+        self.dump(self.str_test_done.format(name=self.open_tests.pop(),
+                                            duration=self.str_test_done_duration
+                                            .format(duration=self.convert_duration(duration))))
 
     # generic print
 
@@ -108,6 +117,20 @@ class GenericOutput:
     def dump(*args):
         thing = "".join(args)
         print(thing)
+
+    @staticmethod
+    def convert_duration(duration):
+        """
+        Converts the given duration (float value in seconds) into a STRING
+        value needed by the backend system (TeamCity uses milliseconds, for
+        example)
+        :param duration: Something that can be converted by float()
+        :return: A string
+        """
+        if duration is not None:
+            return "{:.4f}".format(float(duration))
+        else:
+            return ""
 
 
 def get():

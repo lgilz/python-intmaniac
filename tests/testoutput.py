@@ -67,7 +67,10 @@ class TestOutput(unittest.TestCase):
             op.message("meh")
             op.message("meh", "mah")
             op.message("meh", "mah", "muh")
+
             op.block_open("block")
+            op.block_done()
+
             op.test_suite_open("suite")
             op.test_open("test")
             op.test_stderr("whoops")
@@ -77,4 +80,10 @@ class TestOutput(unittest.TestCase):
             op.test_failed("meh", "mehmeh", "mehmah")
             op.test_done()
             op.test_suite_done()
-            op.block_done()
+
+            op.test_open("test")
+            op.test_done(2)
+
+            op.test_open("test")
+            op.test_done(2.5)
+

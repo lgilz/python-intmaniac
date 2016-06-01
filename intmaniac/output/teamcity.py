@@ -21,7 +21,8 @@ class TeamcityOutput(GenericOutput):
 
     str_test_stdout = "##teamcity[testStdOut name='{name}' out='{text}']"
     str_test_stderr = "##teamcity[testStdErr name='{name}' out='{text}']"
-    str_test_done = "##teamcity[testFinished name='{name}']"
+    str_test_done = "##teamcity[testFinished name='{name}'{duration}]"
+    str_test_done_duration = " duration='{duration}'"
     str_block_open = "##teamcity[blockOpened name='{name}']"
     str_block_done = "##teamcity[blockClosed name='{name}']"
 
@@ -34,9 +35,21 @@ class TeamcityOutput(GenericOutput):
     def format_content(s):
         if s:
             return s\
+                .replace("|", "||") \
                 .replace("'", "|'") \
+                .replace("[", "|[") \
+                .replace("]", "|]") \
                 .replace("\n", "|n") \
                 .replace("\r", "|r")
+        else:
+            return ''
+
+    @staticmethod
+    def convert_duration(duration):
+        if duration is not None:
+            return "{}".format(int(float(duration)*1000))
+        else:
+            return ""
 
 
 def get():
