@@ -189,19 +189,23 @@ class Testrun(object):
             self._run_local_commands(self.meta.get('post', None))
             self.compose_wrapper.stop()
             self.compose_wrapper.rm()
-        except KeyError as e:
-            # raised by _container_for_service() if service cannot be found
-            success = False
-            self.reason = str(e)
         except RunCommandError as e:
+            # we DO NOT save the exception here, cause the command simply
+            # failed, which is totally OK from the test flow perspective.
+            # It's just a failed test ...
             success = False
-            self.reason = "Failed test command"
             self.test_results.append(e.rv)
+        # From here on we DO save the exceptions in self.exception
+        # raised by _container_for_service() if service cannot be found
+        except KeyError as e:
+            success = False
+            self.exception = e
+            self.reason = str(e)
         except OSError as e:
             success = False
+            self.exception = e
             self.reason = "Exception while executing command: {}".format(str(e))
             self.log.error("Exception on command execution: {}".format(str(e)))
-            self.test_results.append(e)
         finally:
             self._get_container_logs()
             self._cleanup()
