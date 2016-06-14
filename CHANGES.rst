@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+0.16.1
+------
+
+Date: 2016-06-14
+
+- Fixed bug in in-test exception handling
+
+
 0.16.0
 ------
 
