@@ -61,24 +61,22 @@ def _print_test_results(argconfig, test):
 
 
 def _run_tests(argconfig, tests):
-    re_raise_me = None
+    retval = True
     try:
-        retval = True
         for test in tests:
             test.run()
             retval = test.succeeded() and retval
             _print_test_results(argconfig, test)
-    except Exception as e:
-        # this is just to make sure we really kill those darn temp files.
-        re_raise_me = e
     finally:
         for test in tests:
             try:
                 unlink(test.template)
-            finally:
+            except Exception:
+                # ignore unlink errors.
                 pass
-    if re_raise_me:
-        raise re_raise_me
+        # if we have an exception before, it is re-raised now.
+        # https://docs.python.org/3/tutorial/errors.html
+        # https://docs.python.org/2.7/tutorial/errors.html
     return retval
 
 
