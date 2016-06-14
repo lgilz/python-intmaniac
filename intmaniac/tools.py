@@ -189,8 +189,7 @@ class RunCommandError(Exception):
     def __init__(self,
                  stdout=None, stderr=None,
                  returncode=256,
-                 command=None,
-                 exception=None):
+                 command=None):
         self.stdout = stdout
         self.stderr = stderr
         self.returncode = returncode
