@@ -30,6 +30,18 @@ A lot basically ...
 * And a lot more probably.
 
 
+## Super-quick-start
+
+    $ mkvirtualenv intmaniac
+    $ pip install intmaniac
+    
+    # now run with the intmaniac.yaml file in the current directory
+    $ intmaniac
+
+    # or maybe even with an environment variable set
+    $ intmaniac -e TMP_IMAGE=my/tmp:image
+
+
 ## Configuration reference
 
 
