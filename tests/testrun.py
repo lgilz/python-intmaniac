@@ -5,6 +5,8 @@ from intmaniac.tools import RunCommandError
 from tests.mocksetup import *
 from tests.configsetup import get_test_tr
 
+import tests.configsetup
+
 import unittest
 
 
@@ -26,9 +28,9 @@ class TestTestrun(unittest.TestCase):
         tmp0.kill.return_value = tmp1
         tmp0.stop.return_value = tmp1
         tmp0.rm.return_value = tmp1
-        with patch('configsetup.tr.run_command') as mock_rc, \
-            patch('configsetup.tr.create_container') as mock_cc, \
-            patch('configsetup.tr.get_client') as mock_gc:
+        with patch('tests.configsetup.tr.run_command') as mock_rc, \
+            patch('tests.configsetup.tr.create_container') as mock_cc, \
+            patch('tests.configsetup.tr.get_client') as mock_gc:
             # what will happen is:
             #    dc = get_client() called
             #    create_container() called, should return an ID string
@@ -79,9 +81,9 @@ class TestTestrun(unittest.TestCase):
                                 command=["totally false"]),
                 KeyError("KeyError test"), OSError("OSerror test"),
             ):
-                with patch('configsetup.tr.run_command') as mock_rc, \
-                        patch('configsetup.tr.create_container') as mock_cc, \
-                        patch('configsetup.tr.get_client') as mock_gc:
+                with patch('tests.configsetup.tr.run_command') as mock_rc, \
+                        patch('tests.configsetup.tr.create_container') as mock_cc, \
+                        patch('tests.configsetup.tr.get_client') as mock_gc:
                     mock_cc.return_value = '0815'
                     mock_gc.return_value.inspect_container.return_value = {
                         'State': {'ExitCode': 0}
