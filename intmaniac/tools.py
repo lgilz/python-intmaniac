@@ -215,6 +215,7 @@ def run_command(command, throw=False, expect_returncode=0, **kwargs):
     rv = (command, p.returncode, stdout_str, stderr_str)
     _run_command_log(logger.error, logger.debug, rv)
     if throw and rv[1] != expect_returncode:
+        print(rv)
         ex = RunCommandError(command=command, returncode=p.returncode,
                               stdout=stdout_str, stderr=stderr_str)
         ex.rv = rv
