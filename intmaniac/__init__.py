@@ -3,6 +3,7 @@
 from intmaniac import maniac_file
 from intmaniac import tools
 from intmaniac import output
+from .version import __version__
 
 import sys
 from os import getcwd, unlink
@@ -122,7 +123,16 @@ def _parse_args(arguments):
                              "container is passed through completely "
                              "unfiltered.",
                         default=False)
+    parser.add_argument("-V", "--version",
+                        action='store_true',
+                        help="Print version and exit",
+                        default=False)
     config = parser.parse_args(arguments)
+
+    if config.version:
+        print(__version__)
+        sys.exit()
+
     # process arguments
     config.env = dict([e.split("=", 1) for e in config.env])
     return config
