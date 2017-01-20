@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-from intmaniac import maniac_file
-from intmaniac import tools
-from intmaniac import output
+from . import maniac_file
+from . import tools
+from . import output
 from .version import __version__
 
 import sys

@@ -288,8 +288,6 @@ def _prepare_docker_compose_template(compose_file, search_and_replace_dict, gc):
     :param gc: The global configuration from the command line parameters
     :return: A system file path to a temporary docker-compose template
     """
-
-    print(compose_file)
     try:
         with open(compose_file, "r") as infile:
             data = infile.read()

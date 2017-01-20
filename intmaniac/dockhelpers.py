@@ -11,7 +11,6 @@ def get_client():
     to the local docker socker under /var/run/docker.sock.
     :return: The docker Client instance
     """
-    #return docker.from_env()
     return docker.DockerClient(base_url='unix://var/run/docker.sock')
 
 

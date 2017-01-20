@@ -61,7 +61,7 @@ class Testrun(object):
         self.post = kwargs.pop('post', None)
         self.allow_failure = kwargs.pop('allow_failure', False)
         self.volumes = self.format_volume_mapping(kwargs.pop('volumes', []))
-        # save the rest (run-arguments for )
+        # save the rest (run-arguments for docker.container.create())
         self.meta = kwargs
         # state information
         self.test_state = self.NOTRUN

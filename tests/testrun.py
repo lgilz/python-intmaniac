@@ -47,9 +47,6 @@ class TestTestrun(unittest.TestCase):
             mock_rc.side_effect = [
                 ("sleep 10", 0, ":)", "None"),
             ]
-            # mock_gc.return_value.inspect_container.return_value = {
-            #     'State': {'ExitCode': 0}
-            # }
             tr_obj.run()
             self.assertTrue(tr_obj.succeeded())
             # check execution counts
