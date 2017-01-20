@@ -94,48 +94,49 @@ class Testrun(object):
         return eq
 
     @classmethod
-    def format_volume_mapping(cls, volume_mapping, mode='rw'):
+    def format_volume_mapping(cls, volume_mapping):
         """
         calls format_volume_str for volume_mapping being a list or a single str.
         :param volume_mapping: single str in format HOST(:CONTAINER) or a list of those
-        :param mode: allowed values: r, rw for allowing read-only or read-write access to volume
         :return: dict of format {HOST: {'bind': CONTAINER, 'mode': mode}}. If CONTAINER not specified,
         CONTAINER is set to HOST
         """
         if isinstance(volume_mapping, list):
             out = dict()
             for el in volume_mapping:
-                out.update(cls.format_volume_str(el, mode))
+                out.update(cls.format_volume_str(el))
         elif isinstance(volume_mapping, str):
-            out = cls.format_volume_str(volume_mapping, mode)
+            out = cls.format_volume_str(volume_mapping)
         else:
             raise TypeError('Volumes can only be defined in strings of list of strings')
         return out
 
     @staticmethod
-    def format_volume_str(volume_str, mode):
+    def format_volume_str(volume_str):
         """
         formats a string of format HOST:CONTAINER or HOST as specified in docker-compose into
         the format needed by docker (python-package)
         :param volume_str: string in format HOST:CONTAINER or HOST
         with HOST, CONTAINER being the path definitions of volumes
-        :param mode: allowed values: r, rw for allowing read-only or read-write access to volume
         :return: dict of format {HOST: {'bind': CONTAINER, 'mode': mode}}. If CONTAINER not specified,
         CONTAINER is set to HOST
         """
-        if ':' in volume_str:
+        mode = 'rw'
+        n_dd = volume_str.count(':')
+        if 0 == n_dd:
+            container = volume_str
+            host = volume_str
+        elif 1 == n_dd:
             host, container = volume_str.split(':')
-            out = {host:
-                       {'bind': container,
-                        'mode': mode}
-                   }
+        elif 2 == n_dd:
+            host, container, mode = volume_str.split(':')
         else:
-            out = {volume_str:
-                       {'bind': volume_str,
-                        'mode': mode}
-                   }
+            raise TypeError('the volume-string {} is given in the wrong format. use HOST:CONTAINER:MODE'.format(volume_str))
+        out = {host:
+                   {'bind': container,
+                    'mode': mode}
+               }
         return out
-
 
     def _container_for_service(self, service_name):
         try:
