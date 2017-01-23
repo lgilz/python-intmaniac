@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+0.18.0
+------
+
+Date: 2017-01-23
+
+- FIX: broader version compatibility with docker APIs (don't use stupid 1.24 default of the python client)
+
+
 0.17.0
 ------
 
