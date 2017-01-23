@@ -1,29 +1,20 @@
 from intmaniac import tools
 
-from docker import Client
+import docker
 
 from re import compile as recomp
 
 
-# client cache
-clients = {}
-
-
-def get_client(base_url=None):
+def get_client():
     """
     Simple wrapper for mocking later, returns a docker Client object bound
     to the local docker socker under /var/run/docker.sock.
     :return: The docker Client instance
     """
-    global client
-    if not base_url:
-        base_url = 'unix:///var/run/docker.sock'
-    if base_url not in clients:
-        clients[base_url] = Client(base_url=base_url, version='auto')
-    return clients[base_url]
+    return docker.DockerClient(base_url='unix://var/run/docker.sock')
 
 
-def create_container(image, command=None, environment={}):
+def create_container(image, command=None, environment={}, **kwargs):
     """
     Creates a new test container instance with the command given. Must be
     called for each command, because we can't change the command once
@@ -31,22 +22,24 @@ def create_container(image, command=None, environment={}):
     :param image: The docker image to use
     :param command: The command to execute with the container, can be <None>
     :param environment: The environment to use in the container
-    :return: The container id string
+    :param kwargs: keyword-arguments passed to docker.client.containers.create()
+    :return: a container-object
     """
     logger = tools.get_logger(__name__+".create_container")
     dc = get_client()
-    tmp = dc.create_container(image,
-                              command=command,
-                              environment=environment)
-    container_id = tmp['Id']
+    container = dc.containers.create(image,
+                                     command=command,
+                                     environment=environment,
+                                     **kwargs)
+    container_id = container.id
     logger.debug("Container id {} created (image: {}, command: {}, env: {})"
                  .format(
                          container_id[:8], image,
                          command if isinstance(command, str) else str(command),
                          str(environment)
                         )
-    )
-    return container_id
+                 )
+    return container
 
 
 class Compose(object):

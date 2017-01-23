@@ -4,6 +4,9 @@ import intmaniac
 from intmaniac.tools import RunCommandError
 from tests.mocksetup import *
 from tests.configsetup import get_test_tr
+from tests.fake_container import FakeContainer
+
+import tests.configsetup
 
 import tests.configsetup
 
@@ -33,31 +36,32 @@ class TestTestrun(unittest.TestCase):
             patch('tests.configsetup.tr.get_client') as mock_gc:
             # what will happen is:
             #    dc = get_client() called
-            #    create_container() called, should return an ID string
+            #    create_container() called, should return a docker.container-obj
             #    dc.start(...), dc.logs(...) called, return value not so
             #        important
             #    dc.inspect_container called, should return dict with
             #        rv['State']['ExitCode'] present
             # done.
-            mock_cc.return_value = '0815'
+            mock_cc.return_value = FakeContainer(
+                id='0815',
+                attrs=dict(State=dict(ExitCode=0))
+            )
             mock_rc.side_effect = [
                 ("sleep 10", 0, ":)", "None"),
             ]
-            mock_gc.return_value.inspect_container.return_value = {
-                'State': {'ExitCode': 0}
-            }
             tr_obj.run()
             self.assertTrue(tr_obj.succeeded())
             # check execution counts
             self.assertEqual(1, mock_rc.call_count)    # for 'sleep 10'
             self.assertEqual(1, mock_cc.call_count)    # for the one test run
             self.assertEqual(3, mock_gc.call_count)    # pull, test run, cleanup
-            self.assertEqual(1, mock_gc.return_value.pull.call_count)
             # check the execution content
             self.assertEqual(['sleep', '10'], mock_rc.call_args[0][0])
             self.assertEqual(call('my/testimage:latest',
                                   command=[],
-                                  environment={'TARGET_URL': 'rsas'}),
+                                  environment={'TARGET_URL': 'rsas'},
+                                  links=[('asdf_two_1', 'two')],
+                                  volumes={}),
                              mock_cc.call_args)
 
     @unittest.skipUnless(mock_available, "No mocking available")

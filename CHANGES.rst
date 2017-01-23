@@ -1,6 +1,16 @@
 CHANGELOG
 =========
 
+0.17.0
+------
+
+Date: 2017-01-20
+
+- FEATURE: Docker 1.12+ compatibility
+- FEATURE: Full interaction between docker-compose stack and test container (volumes, etc.)
+- KNOWN BUGS: Docs / examples needed :)
+
+
 0.16.1
 ------
 

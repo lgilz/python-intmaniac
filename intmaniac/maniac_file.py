@@ -289,7 +289,7 @@ def _prepare_docker_compose_template(compose_file, search_and_replace_dict, gc):
     :return: A system file path to a temporary docker-compose template
     """
     try:
-        with open(compose_file, "r", encoding='utf-8') as infile:
+        with open(compose_file, "r") as infile:
             data = infile.read()
     except IOError as ex:
         fail("Could not read docker-compose file: {}".format(str(ex)))

@@ -55,7 +55,13 @@ class Testrun(object):
         self.test_image = kwargs.pop('image')
         self.test_linked_services = kwargs.pop('links')
         self.test_commands = _build_exec_array(kwargs.pop('commands', []))
-        # save the rest
+        # meta_information
+        self.pull = kwargs.pop('pull', True)
+        self.pre = kwargs.pop('pre', None)
+        self.post = kwargs.pop('post', None)
+        self.allow_failure = kwargs.pop('allow_failure', False)
+        self.volumes = self.format_volume_mapping(kwargs.pop('volumes', []))
+        # save the rest (run-arguments for docker.container.create())
         self.meta = kwargs
         # state information
         self.test_state = self.NOTRUN
@@ -86,6 +92,51 @@ class Testrun(object):
         eq = eq and self.test_commands == other.test_commands
         eq = eq and self.test_linked_services == other.test_linked_services
         return eq
+
+    @classmethod
+    def format_volume_mapping(cls, volume_mapping):
+        """
+        calls format_volume_str for volume_mapping being a list or a single str.
+        :param volume_mapping: single str in format HOST(:CONTAINER) or a list of those
+        :return: dict of format {HOST: {'bind': CONTAINER, 'mode': mode}}. If CONTAINER not specified,
+        CONTAINER is set to HOST
+        """
+        if isinstance(volume_mapping, list):
+            out = dict()
+            for el in volume_mapping:
+                out.update(cls.format_volume_str(el))
+        elif isinstance(volume_mapping, str):
+            out = cls.format_volume_str(volume_mapping)
+        else:
+            raise TypeError('Volumes can only be defined in strings of list of strings')
+        return out
+
+    @staticmethod
+    def format_volume_str(volume_str):
+        """
+        formats a string of format HOST:CONTAINER or HOST as specified in docker-compose into
+        the format needed by docker (python-package)
+        :param volume_str: string in format HOST:CONTAINER or HOST
+        with HOST, CONTAINER being the path definitions of volumes
+        :return: dict of format {HOST: {'bind': CONTAINER, 'mode': mode}}. If CONTAINER not specified,
+        CONTAINER is set to HOST
+        """
+        mode = 'rw'
+        n_dd = volume_str.count(':')
+        if 0 == n_dd:
+            container = volume_str
+            host = volume_str
+        elif 1 == n_dd:
+            host, container = volume_str.split(':')
+        elif 2 == n_dd:
+            host, container, mode = volume_str.split(':')
+        else:
+            raise TypeError('the volume-string {} is given in the wrong format. use HOST:CONTAINER:MODE'.format(volume_str))
+        out = {host:
+                   {'bind': container,
+                    'mode': mode}
+               }
+        return out
 
     def _container_for_service(self, service_name):
         try:
@@ -129,20 +180,18 @@ class Testrun(object):
             command_log += command
         else:
             command_log.append("(default)")
-        cid = create_container(self.test_image,
-                               command=command, environment=self.test_env)
-        self.cleanup_test_containers.append(cid)
-        dc.start(container=cid,
-                 links=[(self._container_for_service(service), service)
-                        for service in self.test_linked_services])
-        logs = dc.logs(cid,
-                       stdout=True, stderr=True, stream=True,
-                       follow=True, since=0)
-        log_output = []
-        for log in logs:
-            log_output.append(str(log, encoding="UTF-8"))
-        tmp = dc.inspect_container(cid)
-        returncode = tmp['State']['ExitCode']
+        test_container = create_container(self.test_image,
+                                          command=command,
+                                          environment=self.test_env,
+                                          links=[(self._container_for_service(service), service)
+                                                 for service in self.test_linked_services],
+                                          volumes=self.volumes,
+                                          **self.meta)
+        self.cleanup_test_containers.append(test_container.id)
+        test_container.start()
+
+        log_output = self.format_log(test_container)
+        returncode = test_container.attrs['State']['ExitCode']
         rv = (command_log, returncode, "".join(log_output), None)
         if returncode != 0:
             ex = RunCommandError(
@@ -155,11 +204,10 @@ class Testrun(object):
         return rv
 
     def _setup_test_env(self):
-        # make pulling standard.
-        if self.meta.get('pull', True):
+        if self.pull:
             self.compose_wrapper.pull(ignorefailures=True)
             # will not fail if the image is not pullable! :)
-            get_client().pull(self.test_image)
+            get_client().images.pull(self.test_image)
         self.run_containers = self.compose_wrapper.up()
 
     def _cleanup(self):
@@ -168,8 +216,9 @@ class Testrun(object):
         # this sucks. for older docker-compose versions, we need --all,
         # newer ones break with it.
         self.compose_wrapper.rm()
-        for test_container_id in self.cleanup_test_containers:
-            dc.remove_container(test_container_id)
+        for container_id in self.cleanup_test_containers:
+            container = dc.containers.get(container_id)
+            container.remove()
 
     def _get_container_logs(self):
         pass
@@ -178,7 +227,7 @@ class Testrun(object):
         success = True
         try:
             self._setup_test_env()
-            self._run_local_commands(self.meta.get('pre', None))
+            self._run_local_commands(self.pre)
             if len(self.test_commands) > 0:
                 for test_command in self.test_commands:
                     rv = self._run_test_command(test_command)
@@ -186,7 +235,7 @@ class Testrun(object):
             else:
                 # no explicit command given
                 self.test_results.append(self._run_test_command())
-            self._run_local_commands(self.meta.get('post', None))
+            self._run_local_commands(self.post)
             self.compose_wrapper.stop()
             self.compose_wrapper.rm()
         except RunCommandError as e:
@@ -210,12 +259,19 @@ class Testrun(object):
             self._get_container_logs()
             self._cleanup()
         # evaluate test results
-        if self.meta.get('allow_failure', False) and not success:
+        if self.allow_failure and not success:
             self.test_state = self.CONTROLLED_FAILURE
         else:
             self.test_state = self.SUCCEEDED if success else self.FAILURE
         self.log.warning("test state %s" % self.test_state)
         return self.succeeded()
+
+    @staticmethod
+    def format_log(container):
+        out = []
+        for log in container.logs(stdout=True, stderr=True, stream=True):
+            out.append(log.decode('utf-8'))
+        return out
 
     def succeeded(self):
         return self.test_state in (self.SUCCEEDED, self.CONTROLLED_FAILURE)
