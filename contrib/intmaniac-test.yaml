@@ -1,0 +1,27 @@
+version: 3
+
+compose_templates:
+  default: compose-test.yaml
+
+tester_configs:
+  failure:
+    image: busybox
+    links: [dummy]
+    commands:
+      - ["sh", "-c", "'echo hi ; sleep 1 ; echo ho ; sleep 1 ; echo hun ; false'"]
+  success:
+    image: busybox
+    links: [dummy]
+    commands:
+      - ["sh", "-c", "'echo hi ; sleep 1 ; echo ho ; sleep 1 ; echo hun ; false'"]
+  allow_failure:
+    image: busybox
+    links: [dummy]
+    allow_failure: true
+    commands:
+      - ["sh", "-c", "'echo hi ; sleep 1 ; echo ho ; sleep 1 ; echo hun ; false'"]
+
+tests:
+  all:
+    tester_configs: [success, failure, allow_failure]
+    compose_template: default

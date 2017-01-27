@@ -1,0 +1,3 @@
+dummy:
+  image: busybox
+  command: sh -c "echo 'waiting for the pings ...' ; while true ; do sleep 1 ; done"
