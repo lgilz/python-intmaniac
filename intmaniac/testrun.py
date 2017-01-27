@@ -174,7 +174,6 @@ class Testrun(object):
         :return: same as tools.run_command()
         :raise: RunCommandError if the execution was not successful
         """
-        dc = get_client()
         command_log = ["docker({})".format(self.test_image)]
         if len(command) > 0:
             command_log += command
@@ -188,10 +187,16 @@ class Testrun(object):
                                           volumes=self.volumes,
                                           **self.meta)
         self.cleanup_test_containers.append(test_container.id)
-        test_container.start()
 
+        # starts, but detached
+        test_container.start()
         log_output = self.format_log(test_container)
-        returncode = test_container.attrs['State']['ExitCode']
+
+        # well, test_container does not seem to be updated, or we don't
+        # know how. so we need to get the final container information
+        updated = get_client().containers.get(test_container.id)
+
+        returncode = updated.attrs['State']['ExitCode']
         rv = (command_log, returncode, "".join(log_output), None)
         if returncode != 0:
             ex = RunCommandError(
