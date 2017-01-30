@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+0.18.1
+------
+
+Date: 2017-01-30
+
+- FIX: correct evaluation of test container return code
+
+
 0.18.0
 ------
 
