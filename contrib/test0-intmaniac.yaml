@@ -1,0 +1,30 @@
+version: 3
+
+compose_templates:
+  default: test0-compose.yaml
+
+tester_configs:
+  failure:
+    image: busybox
+    links: [dummy]
+    commands:
+      # do NOT use ticks on the 3rd parameter - those would be interpreted
+      # as well, leading to an "echo hi ; ..." command, which does not exist.
+      # that goes for every command ;)
+      - ["sh", "-c", "echo hi ; sleep 1 ; echo ho ; sleep 1 ; echo hun ; false"]
+  success:
+    image: busybox
+    links: [dummy]
+    commands:
+      - ["sh", "-c", "echo hi ; sleep 1 ; echo ho ; sleep 1 ; echo hun ; true"]
+  allow_failure:
+    image: busybox
+    links: [dummy]
+    allow_failure: true
+    commands:
+      - ["sh", "-c", "echo hi ; sleep 1 ; echo ho ; sleep 1 ; echo hun ; false"]
+
+tests:
+  all:
+    tester_configs: [success, failure, allow_failure]
+    compose_template: default
